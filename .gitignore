@@ -25,3 +25,6 @@
 /Projet_Rover/React/projet-rover/npm-debug.log*
 /Projet_Rover/React/projet-rover/yarn-debug.log*
 /Projet_Rover/React/projet-rover/yarn-error.log*
+
+# Protection des donnée Sensible 
+back/.env
