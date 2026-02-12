@@ -2,4 +2,26 @@
 /back/.env
 /back/node_modules
 package.json
+/Projet_Rover/React/projet-rover
 
+# dependencies
+/Projet_Rover/React/projet-rover/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/Projet_Rover/React/projet-rover/coverage
+
+# production
+/Projet_Rover/React/projet-rover/build
+
+# misc
+/Projet_Rover/React/projet-rover/.DS_Store
+/Projet_Rover/React/projet-rover/.env.local
+/Projet_Rover/React/projet-rover/.env.development.local
+/Projet_Rover/React/projet-rover/.env.test.local
+/Projet_Rover/React/projet-rover/.env.production.local
+
+/Projet_Rover/React/projet-rover/npm-debug.log*
+/Projet_Rover/React/projet-rover/yarn-debug.log*
+/Projet_Rover/React/projet-rover/yarn-error.log*
