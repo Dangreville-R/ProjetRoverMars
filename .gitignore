@@ -1,7 +1,7 @@
 /phpmyadmin
-/back/.env
-/back/node_modules
-package.json
+/Projet_Rover/React/back/.env
+/Projet_Rover/React/back/node_modules
+/Projet_Rover/React/package.json
 /Projet_Rover/React/projet-rover
 
 # dependencies
