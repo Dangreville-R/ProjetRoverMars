@@ -1,0 +1,54 @@
+/* le style du champ de saisie */
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+/* le label au dessus du champ */
+.input-group__label {
+    color: var(--text-label);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+}
+
+/* le champ en lui meme */
+.input-group__field {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-family: var(--font-family);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    outline: none;
+}
+
+/* le texte gris quand le champ est vide */
+.input-group__field::placeholder {
+    color: var(--text-muted);
+}
+
+/* quand on clique dans le champ */
+.input-group__field:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* quand y'a une erreur, la bordure devient rouge */
+.input-group--error .input-group__field {
+    border-color: var(--color-danger);
+}
+
+.input-group--error .input-group__field:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+/* le message d'erreur en dessous */
+.input-group__error {
+    color: var(--color-danger);
+    font-size: var(--font-size-xs);
+}

@@ -1,0 +1,109 @@
+/* le style du bouton */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    font-family: var(--font-family);
+    font-weight: 500;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    outline: none;
+    position: relative;
+    overflow: hidden;
+}
+
+/* quand on clique dessus, il retrecit un peu */
+.btn:active {
+    transform: scale(0.98);
+}
+
+/* quand le bouton est desactivé */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* les tailles */
+.btn--sm {
+    padding: 8px 16px;
+    font-size: var(--font-size-xs);
+}
+
+.btn--md {
+    padding: 12px 24px;
+    font-size: var(--font-size-sm);
+}
+
+.btn--lg {
+    padding: 14px 32px;
+    font-size: var(--font-size-md);
+}
+
+/* les differents styles de bouton */
+.btn--primary {
+    background: var(--color-primary);
+    color: var(--text-primary);
+}
+
+.btn--primary:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+    box-shadow: var(--shadow-glow);
+}
+
+.btn--secondary {
+    background: var(--color-secondary);
+    color: var(--text-primary);
+}
+
+.btn--secondary:hover:not(:disabled) {
+    background: var(--color-secondary-hover);
+}
+
+.btn--outline {
+    background: transparent;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+}
+
+.btn--outline:hover:not(:disabled) {
+    background: var(--color-primary-light);
+}
+
+.btn--danger {
+    background: var(--color-danger);
+    color: var(--text-primary);
+}
+
+.btn--danger:hover:not(:disabled) {
+    background: #dc2626;
+}
+
+/* bouton qui prend toute la largeur */
+.btn--full {
+    width: 100%;
+}
+
+/* le petit spinner qui tourne quand ca charge */
+.btn--loading {
+    pointer-events: none;
+}
+
+.btn__spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

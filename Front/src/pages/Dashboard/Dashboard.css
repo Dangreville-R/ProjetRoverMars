@@ -1,0 +1,166 @@
+/* le style de la page dashboard */
+
+.dashboard {
+    min-height: 100vh;
+    background: var(--bg-dark);
+}
+
+/* la barre de navigation en haut */
+.dashboard-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md) var(--spacing-xl);
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dashboard-nav__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.dashboard-nav__logo {
+    font-size: 24px;
+}
+
+.dashboard-nav__title {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.dashboard-nav__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.dashboard-nav__user {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+/* le contenu principal */
+.dashboard-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-2xl) var(--spacing-xl);
+}
+
+/* le message de bienvenue */
+.dashboard-welcome {
+    margin-bottom: var(--spacing-2xl);
+    animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dashboard-welcome h1 {
+    font-size: var(--font-size-2xl);
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.dashboard-welcome p {
+    color: var(--text-secondary);
+    font-size: var(--font-size-md);
+}
+
+/* la grille avec les cartes d'info */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+/* chaque carte */
+.dashboard-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    border: 1px solid var(--border-color);
+    transition: all var(--transition-normal);
+    animation: fadeIn 0.5s ease forwards;
+}
+
+/* les cartes apparaissent les unes apres les autres */
+.dashboard-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.dashboard-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.dashboard-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.dashboard-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+/* quand on passe la souris sur une carte */
+.dashboard-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-2px);
+}
+
+.dashboard-card__icon {
+    font-size: 32px;
+    margin-bottom: var(--spacing-md);
+}
+
+.dashboard-card h3 {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    margin-bottom: var(--spacing-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dashboard-card__value {
+    color: var(--text-primary);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+}
+
+/* la couleur verte pour "En ligne" */
+.dashboard-card__value--success {
+    color: var(--color-success);
+}
+
+/* pour les petits ecrans (telephone) */
+@media (max-width: 768px) {
+    .dashboard-nav {
+        flex-direction: column;
+        gap: var(--spacing-md);
+        padding: var(--spacing-md);
+    }
+
+    .dashboard-content {
+        padding: var(--spacing-lg) var(--spacing-md);
+    }
+
+    .dashboard-welcome h1 {
+        font-size: var(--font-size-xl);
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
