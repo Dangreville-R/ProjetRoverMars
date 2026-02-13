@@ -1,53 +1,60 @@
-// ===============================
-// IMPORTS
-// ===============================
+// Importation Général 
+
+require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
-require('dotenv').config();
-
-// ===============================
-// CONFIGURATION
-// ===============================
+const mysql = require('mysql2/promise'); // Pour la partie de Raphael (E3)
 const app = express();
+
 app.use(express.json());
 
+// Configuration Romain(E2)
+
 const PORT = process.env.PORT || 3000;
+const API_E3_URL = process.env.API_E3_URL; 
 
-// URL de l'API interne de l'étudiant 3 (E3)
-const API_E3 = process.env.API_E3_URL; 
-// Exemple dans .env : API_E3_URL=http://172.29.16.157:4000/api
 
-// ===============================
-// ROUTES API
-// ===============================
+// Routes de Romain (Etudiant 2)
 
-// Route de test
+// Route Pour tester le Serveur
 app.get('/api/status', (req, res) => {
-    res.json({
-        status: "online",
-        message: "Serveur E2 opérationnel"
-    });
+  res.json({
+    status: "online",
+    message: "Le Serveur Fonctionne Correctement !!!"
+  });
 });
 
-// Réception des données du rover (E1) → Transmission à E3
-app.post('/api/mesures/save', async (req, res) => {
-    try {
-        const mesures = req.body;
-        console.log("📥 Mesures reçues de E1 :", mesures);
-
-        // Transmission à E3
-        await axios.post(`${API_E3}/save`, mesures);
-
-        res.status(200).json({ message: "Mesures transmises à E3 avec succès" });
-    } catch (error) {
-        console.error("❌ Erreur API E3 :", error.message);
-        res.status(500).json({ error: "Impossible de contacter l'API E3" });
-    }
+// Cette Fonction permet de faire le relais pour Etudiant 2 entre Etudiant 3 et Etudiant 1 
+app.get('/api/mesures/history', async (req, res) => {
+  try {
+    const response = await axios.get(`${API_E3_URL}/mesures/history`);
+    res.json(response.data);
+  } catch (error) {
+    console.error("Erreur D'API :", error.message);
+    res.status(500).json({ error: "Connexion Impossible a Raphael" });
+  }
 });
 
-// ===============================
-// Lancement du serveur
-// ===============================
+// Section Etudiant 3 — SQL
+
+// Connexion à la base de données
+async function getConnection() {
+  return mysql.createConnection({
+    host: process.env.Serveur_BDD,
+    user: process.env.User_BDD,
+    password: process.env.Mot_De_Passe_BDD,
+    database: process.env.Nom_BDD
+  });
+}
+
+// Export pour les scripts externes Raphael (E3)
+module.exports = {
+  getConnection
+};
+
+// Lancement du Serveur
+
 app.listen(PORT, () => {
-    console.log(`🚀 Serveur E2 lancé sur le port ${PORT}`);
+  console.log("Le Serveur fonctionne correctement !");
+  console.log(`URL : http://172.29.16.157:${PORT}`);
 });
