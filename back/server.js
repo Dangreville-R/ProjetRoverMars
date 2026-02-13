@@ -52,7 +52,7 @@ module.exports = {
   getConnection
 };
 
-// Lancement du Serveur
+// Lancement du Serveur sur la vm du projet : 
 
 app.listen(PORT, () => {
   console.log("Le Serveur fonctionne correctement !");
