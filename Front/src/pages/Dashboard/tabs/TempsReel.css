@@ -1,0 +1,170 @@
+/* style de l'onglet temps reel */
+
+.temps-reel__header {
+    margin-bottom: var(--spacing-xl);
+}
+
+.temps-reel__header h2 {
+    font-size: var(--font-size-xl);
+    color: var(--text-primary);
+    font-weight: 700;
+    margin-bottom: var(--spacing-xs);
+}
+
+.temps-reel__header p {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* grille des cartes */
+.temps-reel__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+}
+
+/* chaque carte de donnee */
+.temps-reel__card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    transition: all var(--transition-normal);
+    animation: cardSlideIn 0.4s ease forwards;
+    opacity: 0;
+}
+
+@keyframes cardSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.temps-reel__card:hover {
+    border-color: var(--card-color, var(--color-primary));
+    box-shadow: 0 0 20px color-mix(in srgb, var(--card-color, var(--color-primary)) 15%, transparent);
+    transform: translateY(-2px);
+}
+
+.temps-reel__card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.temps-reel__card-icon {
+    font-size: 20px;
+}
+
+.temps-reel__card-label {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.temps-reel__card-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-md);
+    font-variant-numeric: tabular-nums;
+    transition: color var(--transition-fast);
+}
+
+/* petite barre coloree decorative en bas */
+.temps-reel__card-bar {
+    height: 3px;
+    background: rgba(148, 163, 184, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.temps-reel__card-bar-fill {
+    height: 100%;
+    width: 60%;
+    background: var(--card-color, var(--color-primary));
+    border-radius: 2px;
+    animation: barPulse 2s ease-in-out infinite;
+}
+
+@keyframes barPulse {
+
+    0%,
+    100% {
+        width: 40%;
+        opacity: 0.6;
+    }
+
+    50% {
+        width: 80%;
+        opacity: 1;
+    }
+}
+
+/* message quand le rover est deconnecte */
+.temps-reel__offline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px var(--spacing-xl);
+    text-align: center;
+}
+
+.temps-reel__offline-icon {
+    font-size: 48px;
+    margin-bottom: var(--spacing-lg);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+}
+
+.temps-reel__offline h3 {
+    color: var(--text-primary);
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-sm);
+}
+
+.temps-reel__offline p {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* responsive tablette */
+@media (max-width: 900px) {
+    .temps-reel__grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* responsive mobile */
+@media (max-width: 540px) {
+    .temps-reel__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .temps-reel__card-value {
+        font-size: 24px;
+    }
+}

@@ -50,20 +50,13 @@ const request = async (endpoint, options = {}) => {
     }
 };
 
-// ici c'est les fonctions pour l'authentification (login et register)
+// ici c'est les fonctions pour l'authentification via École Directe
 export const authAPI = {
-    // pour se connecter
-    login: (email, password) =>
+    // pour se connecter (on envoie identifiant et motdepasse au back-end)
+    login: (identifiant, motdepasse) =>
         request('/api/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ email, password }),
-        }),
-
-    // pour s'inscrire
-    register: (userData) =>
-        request('/api/auth/register', {
-            method: 'POST',
-            body: JSON.stringify(userData),
+            body: JSON.stringify({ identifiant, motdepasse }),
         }),
 };
 

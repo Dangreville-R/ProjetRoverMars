@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button, Input } from '../../components';
 import { useAuth } from '../../hooks/useAuth';
 import { authAPI } from '../../services/api';
-import { isValidEmail } from '../../utils/helpers';
 import './Login.css';
 
 // on genere des etoiles aleatoires pour le fond spatial
@@ -25,40 +24,44 @@ const generateStars = (count) => {
 // on cree les etoiles une seule fois (pas a chaque render)
 const stars = generateStars(50);
 
-// page de connexion
+// page de connexion via École Directe
 const Login = () => {
     const navigate = useNavigate();
     const { login } = useAuth();
 
     // les states pour le formulaire
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [identifiant, setIdentifiant] = useState('');
+    const [motdepasse, setMotdepasse] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // cette fonction se lance quand on clique sur le bouton "Se connecter"
+    // cette fonction se lance quand on clique sur "Se connecter"
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        if (!isValidEmail(email)) {
-            setError('Veuillez entrer un email valide.');
+        // on verifie que les champs ne sont pas vides
+        if (!identifiant.trim()) {
+            setError('Veuillez entrer votre identifiant.');
             return;
         }
 
-        if (password.length < 6) {
-            setError('Le mot de passe doit contenir au moins 6 caractères.');
+        if (!motdepasse) {
+            setError('Veuillez entrer votre mot de passe.');
             return;
         }
 
         setLoading(true);
 
         try {
-            const data = await authAPI.login(email, password);
+            // on envoie les identifiants au back-end qui contacte École Directe
+            const data = await authAPI.login(identifiant, motdepasse);
+            // si ca marche on connecte l'utilisateur
             login(data.user, data.token);
+            // et on redirige vers le dashboard
             navigate('/dashboard');
         } catch (err) {
-            setError(err.message || 'Email ou mot de passe incorrect.');
+            setError(err.message || 'Identifiant ou mot de passe incorrect.');
         } finally {
             setLoading(false);
         }
@@ -83,10 +86,10 @@ const Login = () => {
             </div>
 
             <div className="login-card">
-                {/* en-tete simple avec juste le titre */}
+                {/* en-tete */}
                 <div className="login-header">
                     <h1>Connexion</h1>
-                    <p>Identifiez-vous pour accéder au contrôle</p>
+                    <p>Connectez-vous avec votre compte École Directe</p>
                 </div>
 
                 {/* message d'erreur */}
@@ -95,22 +98,22 @@ const Login = () => {
                 {/* formulaire de connexion */}
                 <form onSubmit={handleSubmit} className="login-form">
                     <Input
-                        label="Email"
-                        type="email"
-                        id="login-email"
-                        placeholder="pilote@nasa.gov"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        label="Identifiant"
+                        type="text"
+                        id="login-identifiant"
+                        placeholder="prenom.nom"
+                        value={identifiant}
+                        onChange={(e) => setIdentifiant(e.target.value)}
                         required
                     />
 
                     <Input
                         label="Mot de passe"
                         type="password"
-                        id="login-password"
+                        id="login-motdepasse"
                         placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        value={motdepasse}
+                        onChange={(e) => setMotdepasse(e.target.value)}
                         required
                     />
 
@@ -123,12 +126,6 @@ const Login = () => {
                         Se connecter
                     </Button>
                 </form>
-
-                {/* lien vers la page d'inscription */}
-                <p className="login-footer">
-                    Pas encore de compte ?{' '}
-                    <Link to="/register">S'inscrire</Link>
-                </p>
             </div>
         </div>
     );
