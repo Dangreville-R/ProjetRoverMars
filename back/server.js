@@ -2,6 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+const { Session } = require('api-ecoledirecte');
+
+const tempSessions = new Map();
 const mysql = require('mysql2/promise'); // pour E3 (Raphaël)
 
 const app = express();
@@ -10,8 +13,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // configuration port et api
-const PORT = process.env.PORT || 3001; 
-const API_E3_URL = process.env.API_E3_URL; 
+const PORT = process.env.PORT || 3001;
+const API_E3_URL = process.env.API_E3_URL;
 
 // route pour tester le serveur
 app.get('/api/status', (req, res) => {
@@ -40,43 +43,94 @@ app.get('/api/mesures/history', async (req, res) => {
 
 // route authentification via école directe (pour Noah - étudiant 1)
 app.post('/api/auth/login', async (req, res) => {
-    try {
-        const { identifiant, motdepasse } = req.body;
-        if (!identifiant || !motdepasse) {
-            return res.status(400).json({ message: 'identifiant et mot de passe obligatoires.' });
-        }
-
-        const response = await axios.post(
-            'https://api.ecoledirecte.com/v3/login.awp',
-            `data=${JSON.stringify({ identifiant, motdepasse })}`,
-            {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'User-Agent': 'MUSIC-MUSIC'
-                }
-            }
-        );
-
-        const data = response.data;
-        if (data.code === 200 && data.token) {
-            const compte = data.data.accounts[0];
-            res.json({
-                token: data.token,
-                user: {
-                    id: compte.id,
-                    prenom: compte.prenom,
-                    nom: compte.nom,
-                    typeCompte: compte.typeCompte,
-                    email: compte.email || ''
-                }
-            });
-        } else {
-            res.status(401).json({ message: data.message || 'identifiant ou mot de passe incorrect.' });
-        }
-    } catch (error) {
-        console.error('erreur login école directe:', error.message);
-        res.status(500).json({ message: 'impossible de contacter école directe.' });
+  try {
+    const { identifiant, motdepasse } = req.body;
+    if (!identifiant || !motdepasse) {
+      return res.status(400).json({ message: 'Identifiant et mot de passe obligatoires.' });
     }
+
+    const session = new Session();
+
+    try {
+      await session.login(identifiant, motdepasse);
+
+      // Si pas de 2FA requis
+      if (session.accounts.length > 0) {
+        const compte = session.accounts[0];
+        return res.json({
+          token: session.token,
+          user: {
+            id: compte.id,
+            prenom: compte.prenom,
+            nom: compte.nom,
+            typeCompte: compte.typeCompte,
+            email: compte.email || ''
+          }
+        });
+      }
+    } catch (err) {
+      if (err.code === 250) {
+        // Double authentification requise
+        const questionData = await session.fetch2FAQuestion(identifiant, motdepasse);
+        const sessionId = Date.now().toString();
+        tempSessions.set(sessionId, { session, identifiant, motdepasse, questionData });
+
+        return res.json({
+          twoFactorRequired: true,
+          sessionId,
+          question: questionData.question,
+          propositions: questionData.propositions
+        });
+      }
+      return res.status(401).json({ message: err.edMessage || 'Identifiant ou mot de passe incorrect.' });
+    }
+  } catch (error) {
+    console.error('Erreur login:', error);
+    res.status(500).json({ message: 'Erreur serveur lors de la connexion.' });
+  }
+});
+
+// Route pour valider la 2FA
+app.post('/api/auth/login/2fa/verify', async (req, res) => {
+  try {
+    const { sessionId, answer } = req.body;
+    const temp = tempSessions.get(sessionId);
+
+    if (!temp) {
+      return res.status(400).json({ message: 'Session expirée ou invalide. Veuillez recommencer.' });
+    }
+
+    const { session, identifiant, motdepasse, questionData } = temp;
+
+    // On trouve l'index de la réponse
+    const index = questionData.propositions.indexOf(answer);
+    if (index === -1) {
+      return res.status(400).json({ message: 'Réponse invalide.' });
+    }
+
+    // On envoie le choix au serveur d'Ecole Directe
+    const choice = questionData.rawPropositions[index];
+    const faResult = await session.fetch2FACreds(choice);
+
+    // Une fois validé, on se reconnecte pour avoir le token final avec les codes de sécurité
+    await session.login(identifiant, motdepasse, faResult);
+    tempSessions.delete(sessionId);
+
+    const compte = session.accounts[0];
+    res.json({
+      token: session.token,
+      user: {
+        id: compte.id,
+        prenom: compte.prenom,
+        nom: compte.nom,
+        typeCompte: compte.typeCompte,
+        email: compte.email || ''
+      }
+    });
+  } catch (error) {
+    console.error('Erreur 2FA:', error);
+    res.status(401).json({ message: error.edMessage || 'Erreur lors de la validation 2FA.' });
+  }
 });
 
 // partie Raphaël (étudiant 3) - sql
@@ -92,6 +146,6 @@ async function getConnection() {
 // lancement du serveur
 const BIND_IP = '0.0.0.0';
 app.listen(PORT, BIND_IP, () => {
-    console.log(` SERVEUR E2 EN LIGNE`);
-    console.log(` Ecoute sur : http://${BIND_IP}:${PORT}`);
+  console.log(` SERVEUR E2 EN LIGNE`);
+  console.log(` Ecoute sur : http://${BIND_IP}:${PORT}`);
 });

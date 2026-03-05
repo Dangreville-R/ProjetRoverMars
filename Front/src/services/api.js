@@ -1,20 +1,18 @@
-// api.js - c'est ici qu'on fait les appels au serveur back-end
-// on utilise fetch() pour envoyer des requetes HTTP
+// Appels au serveur pour le front
 
-// l'url du serveur backend (si y'a pas de variable d'env on met localhost)
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+// L'url du serveur
+const API_URL = process.env.REACT_APP_API_URL || '';
 
-// cette fonction sert a faire des requetes au serveur
-// elle ajoute automatiquement le token si l'utilisateur est connecté
+// Fonction pour faire une requête au serveur
 const request = async (endpoint, options = {}) => {
-    // on recupere le token dans le localStorage
+    // Récupère le token
     const token = localStorage.getItem('token');
 
-    // on prepare la config de la requete
+    // Prépare la requête
     const config = {
         headers: {
             'Content-Type': 'application/json',
-            // si on a un token on l'ajoute dans le header
+            // Ajout du token si on est connecté
             ...(token && { Authorization: `Bearer ${token}` }),
             ...options.headers,
         },
@@ -22,50 +20,56 @@ const request = async (endpoint, options = {}) => {
     };
 
     try {
-        // on envoie la requete au serveur
+        // Envoi de la requête
         const response = await fetch(`${API_URL}${endpoint}`, config);
 
-        // si le serveur dit 401 ca veut dire que le token est plus valide
-        // donc on deconnecte l'utilisateur
-        if (response.status === 401) {
+        // Déconnexion si le token est invalide
+        if (response.status === 401 && endpoint !== '/api/auth/login' && endpoint !== '/api/auth/login/2fa/verify') {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/login';
             return;
         }
 
-        // on transforme la reponse en JSON
+        // Convertit en JSON
         const data = await response.json();
 
-        // si la reponse est pas ok on lance une erreur
+        // Erreur si réponse pas ok
         if (!response.ok) {
             throw new Error(data.message || 'Une erreur est survenue');
         }
 
         return data;
     } catch (error) {
-        // on affiche l'erreur dans la console pour debugger
+        // Affiche l'erreur en console
         console.error(`Erreur API [${endpoint}]:`, error.message);
         throw error;
     }
 };
 
-// ici c'est les fonctions pour l'authentification via École Directe
+// Connexion École Directe
 export const authAPI = {
-    // pour se connecter (on envoie identifiant et motdepasse au back-end)
+    // Envoie les identifiants
     login: (identifiant, motdepasse) =>
         request('/api/auth/login', {
             method: 'POST',
             body: JSON.stringify({ identifiant, motdepasse }),
         }),
+
+    // Valide la 2FA
+    verify2FA: (sessionId, answer) =>
+        request('/api/auth/login/2fa/verify', {
+            method: 'POST',
+            body: JSON.stringify({ sessionId, answer }),
+        }),
 };
 
-// ici c'est les fonctions pour le rover (on les utilisera plus tard)
+// Fonctions pour le rover
 export const roverAPI = {
-    // recuperer le statut du rover
+    // Statut du rover
     getStatus: () => request('/api/rover/status'),
 
-    // envoyer une commande au rover
+    // Envoie une commande
     sendCommand: (command) =>
         request('/api/rover/command', {
             method: 'POST',

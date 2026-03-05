@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Historique.css';
 
-// donnees simulees de l'historique (en vrai ca viendra de l'API)
+// Fausses données historiques
 const MOCK_HISTORY = [
     { id: 1, date: '2026-03-05 09:12', temperature: '-42.3', humidite: '2.1', pression: '6.1', batterie: '89' },
     { id: 2, date: '2026-03-05 09:09', temperature: '-43.1', humidite: '2.0', pression: '6.0', batterie: '88' },
@@ -13,11 +13,11 @@ const MOCK_HISTORY = [
     { id: 8, date: '2026-03-05 08:51', temperature: '-49.1', humidite: '2.0', pression: '6.3', batterie: '82' },
 ];
 
-// page historique - affiche les anciennes mesures du rover
+// Page Historique
 const Historique = () => {
     const [filter, setFilter] = useState('all');
 
-    // colonnes du tableau
+    // Colonnes du tableau
     const columns = [
         { key: 'date', label: 'Date & Heure' },
         { key: 'temperature', label: 'Temp. (°C)' },
@@ -47,7 +47,7 @@ const Historique = () => {
                 </div>
             </div>
 
-            {/* tableau des donnees */}
+            {/* Tableau */}
             <div className="historique__table-wrapper">
                 <table className="historique__table">
                     <thead>
@@ -82,7 +82,7 @@ const Historique = () => {
                 </table>
             </div>
 
-            {/* note explicative */}
+            {/* Message */}
             <p className="historique__note">
                 Les données seront récupérées depuis l'API du back-end une fois connecté.
             </p>

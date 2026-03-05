@@ -1,11 +1,7 @@
 import React from 'react';
 import './Button.css';
 
-// composant bouton reutilisable
-// on peut changer le style avec variant (primary, secondary, outline, danger)
-// on peut changer la taille avec size (sm, md, lg)
-// fullWidth = le bouton prend toute la largeur
-// loading = affiche un spinner quand ca charge
+// Composant Bouton réutilisable
 const Button = ({
     children,
     variant = 'primary',
@@ -18,8 +14,7 @@ const Button = ({
     className = '',
     ...props
 }) => {
-    // on construit les classes CSS du bouton
-    // par exemple si variant="primary" et size="md" ca donne "btn btn--primary btn--md"
+    // Construit les classes CSS du bouton
     const classNames = [
         'btn',
         `btn--${variant}`,
@@ -28,8 +23,8 @@ const Button = ({
         loading ? 'btn--loading' : '',
         className,
     ]
-        .filter(Boolean) // ca enleve les valeurs vides
-        .join(' '); // ca met tout ensemble avec des espaces
+        .filter(Boolean) // Enlève les classes vides
+        .join(' '); // Assemble le tout
 
     return (
         <button
@@ -39,7 +34,7 @@ const Button = ({
             onClick={onClick}
             {...props}
         >
-            {/* si c'est en chargement on affiche un spinner sinon le texte du bouton */}
+            {/* Affiche le spinner ou le texte */}
             {loading ? <span className="btn__spinner" /> : children}
         </button>
     );

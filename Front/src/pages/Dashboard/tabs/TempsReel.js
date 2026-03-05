@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import './TempsReel.css';
 
-// page temps reel - affiche les donnees en direct du rover
+// Page Temps Réel
 const TempsReel = ({ roverConnected }) => {
-    // donnees simulees du rover (en vrai ca viendra de l'API)
+    // Fausses données
     const [data, setData] = useState({
         temperature: '--',
         humidite: '--',
@@ -13,7 +13,7 @@ const TempsReel = ({ roverConnected }) => {
         vitesse: '--',
     });
 
-    // on simule la reception de donnees toutes les 3 secondes
+    // Boucle de 3s pour les données
     useEffect(() => {
         if (!roverConnected) return;
 
@@ -33,7 +33,7 @@ const TempsReel = ({ roverConnected }) => {
         return () => clearInterval(interval);
     }, [roverConnected]);
 
-    // les cartes a afficher
+    // Cartes affichées
     const cards = [
         { label: 'Température', value: `${data.temperature}°C`, icon: '🌡️', color: '#f97316' },
         { label: 'Humidité', value: `${data.humidite}%`, icon: '💧', color: '#06b6d4' },

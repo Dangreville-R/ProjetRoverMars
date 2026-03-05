@@ -2,11 +2,11 @@ import React from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import './Admin.css';
 
-// page admin - pour configurer le rover et voir les infos systeme
+// Page Admin
 const Admin = () => {
     const { user } = useAuth();
 
-    // les infos systeme a afficher
+    // Infos système
     const systemInfo = [
         { label: 'Utilisateur connecté', value: user?.prenom ? `${user.prenom} ${user.nom}` : user?.username || 'Inconnu' },
         { label: 'Type de compte', value: user?.typeCompte || 'N/A' },
@@ -14,7 +14,7 @@ const Admin = () => {
         { label: 'Version Front', value: '1.0.0' },
     ];
 
-    // les parametres du rover
+    // Paramètres du rover
     const roverSettings = [
         { label: 'Fréquence de mesure', value: '3 secondes', description: 'Intervalle entre chaque relevé de capteur' },
         { label: 'Mode économie', value: 'Désactivé', description: 'Réduit la fréquence des mesures pour économiser la batterie' },
@@ -29,7 +29,7 @@ const Admin = () => {
                 <p>Configuration du système et informations</p>
             </div>
 
-            {/* infos systeme */}
+            {/* Infos système */}
             <div className="admin__section">
                 <h3 className="admin__section-title">Informations système</h3>
                 <div className="admin__info-grid">
@@ -42,7 +42,7 @@ const Admin = () => {
                 </div>
             </div>
 
-            {/* parametres rover */}
+            {/* Paramètres rover */}
             <div className="admin__section">
                 <h3 className="admin__section-title">Paramètres du Rover</h3>
                 <div className="admin__settings">
@@ -58,7 +58,7 @@ const Admin = () => {
                 </div>
             </div>
 
-            {/* note */}
+            {/* Message */}
             <p className="admin__note">
                 Les paramètres seront modifiables une fois le back-end connecté.
             </p>

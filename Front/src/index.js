@@ -4,11 +4,10 @@ import './index.css';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 
-// on recupere la div "root" du fichier public/index.html
+// Cible la div root
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
-// on affiche l'application dans la page
-// AuthProvider permet de partager les infos de connexion partout
+// Affiche l'application
 root.render(
   <React.StrictMode>
     <AuthProvider>

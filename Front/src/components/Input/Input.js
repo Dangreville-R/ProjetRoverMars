@@ -1,8 +1,7 @@
 import React from 'react';
 import './Input.css';
 
-// composant input reutilisable pour les formulaires
-// on peut mettre un label, un placeholder, et afficher un message d'erreur
+// Champ de texte réutilisable
 const Input = ({
     label,
     type = 'text',
@@ -17,7 +16,7 @@ const Input = ({
 }) => {
     return (
         <div className={`input-group ${error ? 'input-group--error' : ''} ${className}`}>
-            {/* on affiche le label seulement si il y en a un */}
+            {/* Affiche le label s'il existe */}
             {label && (
                 <label htmlFor={id} className="input-group__label">
                     {label}
@@ -33,7 +32,7 @@ const Input = ({
                 required={required}
                 {...props}
             />
-            {/* on affiche l'erreur seulement si il y en a une */}
+            {/* Affiche l'erreur si elle existe */}
             {error && <span className="input-group__error">{error}</span>}
         </div>
     );
