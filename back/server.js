@@ -1,49 +1,85 @@
-// Importation Général 
-
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
-const mysql = require('mysql2/promise'); // Pour la partie de Raphael (E3)
-const app = express();
 const cors = require('cors');
+const mysql = require('mysql2/promise'); // pour E3 (Raphaël)
 
-// Middleware
-app.use(cors()); // Autorise le Front (E1) à communiquer avec le Back (E2)
-app.use(express.urlencoded({ extended: true }));
+const app = express();
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Configuration Romain (E2)
-
-const PORT = process.env.PORT || 3000;
+// configuration port et api
+const PORT = process.env.PORT || 3001; 
 const API_E3_URL = process.env.API_E3_URL; 
-// Exemple : http://172.29.16.157:4000/api
 
-
-// Routes de Romain (Étudiant 2)
-
-// Route Pour tester le Serveur
+// route pour tester le serveur
 app.get('/api/status', (req, res) => {
-  res.json({
-    status: "online",
-    message: "Le Serveur Fonctionne Correctement !!!"
-  });
+  res.json({ status: "online", role: "E2 - Gateway Relais", port: PORT });
 });
 
-// Cette Fonction permet de faire le relais pour Étudiant 2 entre Étudiant 3 et Étudiant 1 
+// route relais entrant 
+app.post('/api/mesures/save', async (req, res) => {
+  try {
+    const response = await axios.post(`${API_E3_URL}/mesures/save`, req.body);
+    res.json({ message: "relais réussi", data: response.data });
+  } catch (error) {
+    res.status(500).json({ error: "erreur de transfert vers E3" });
+  }
+});
+
+// route relais sortant
 app.get('/api/mesures/history', async (req, res) => {
   try {
     const response = await axios.get(`${API_E3_URL}/mesures/history`);
     res.json(response.data);
   } catch (error) {
-    console.error("Erreur D'API :", error.message);
-    res.status(500).json({ error: "Connexion Impossible à Raphael" });
+    res.status(500).json({ error: "erreur récupération historique" });
   }
 });
 
+// route authentification via école directe (pour Noah - étudiant 1)
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { identifiant, motdepasse } = req.body;
+        if (!identifiant || !motdepasse) {
+            return res.status(400).json({ message: 'identifiant et mot de passe obligatoires.' });
+        }
 
-// Section Étudiant 3 — SQL
+        const response = await axios.post(
+            'https://api.ecoledirecte.com/v3/login.awp',
+            `data=${JSON.stringify({ identifiant, motdepasse })}`,
+            {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'User-Agent': 'MUSIC-MUSIC'
+                }
+            }
+        );
 
-// Connexion à la base de données
+        const data = response.data;
+        if (data.code === 200 && data.token) {
+            const compte = data.data.accounts[0];
+            res.json({
+                token: data.token,
+                user: {
+                    id: compte.id,
+                    prenom: compte.prenom,
+                    nom: compte.nom,
+                    typeCompte: compte.typeCompte,
+                    email: compte.email || ''
+                }
+            });
+        } else {
+            res.status(401).json({ message: data.message || 'identifiant ou mot de passe incorrect.' });
+        }
+    } catch (error) {
+        console.error('erreur login école directe:', error.message);
+        res.status(500).json({ message: 'impossible de contacter école directe.' });
+    }
+});
+
+// partie Raphaël (étudiant 3) - sql
 async function getConnection() {
   return mysql.createConnection({
     host: process.env.Serveur_BDD,
@@ -53,15 +89,9 @@ async function getConnection() {
   });
 }
 
-// Export pour les scripts externes Raphael (E3)
-module.exports = {
-  getConnection
-};
-
-
-// Lancement du Serveur sur la VM du projet : 
-
-app.listen(PORT, () => {
-  console.log("Le Serveur fonctionne correctement !");
-  console.log(`URL : http://172.29.16.157:${PORT}`);
+// lancement du serveur
+const BIND_IP = '0.0.0.0';
+app.listen(PORT, BIND_IP, () => {
+    console.log(` SERVEUR E2 EN LIGNE`);
+    console.log(` Ecoute sur : http://${BIND_IP}:${PORT}`);
 });
