@@ -6,6 +6,25 @@ import { authAPI } from '../../services/api';
 import { isValidEmail } from '../../utils/helpers';
 import './Login.css';
 
+// on genere des etoiles aleatoires pour le fond spatial
+const generateStars = (count) => {
+    const stars = [];
+    for (let i = 0; i < count; i++) {
+        stars.push({
+            id: i,
+            left: Math.random() * 100,
+            top: Math.random() * 100,
+            duration: 2 + Math.random() * 4,
+            delay: Math.random() * 3,
+            isLarge: Math.random() > 0.85,
+        });
+    }
+    return stars;
+};
+
+// on cree les etoiles une seule fois (pas a chaque render)
+const stars = generateStars(50);
+
 // page de connexion
 const Login = () => {
     const navigate = useNavigate();
@@ -17,51 +36,60 @@ const Login = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // cette fonction se lance quand on clique sur le bouton "Lancer la mission"
+    // cette fonction se lance quand on clique sur le bouton "Se connecter"
     const handleSubmit = async (e) => {
-        e.preventDefault(); // empeche le rechargement de la page
-        setError(''); // on reset l'erreur
+        e.preventDefault();
+        setError('');
 
-        // on verifie que l'email est valide
         if (!isValidEmail(email)) {
             setError('Veuillez entrer un email valide.');
             return;
         }
 
-        // on verifie que le mot de passe fait au moins 6 caracteres
         if (password.length < 6) {
             setError('Le mot de passe doit contenir au moins 6 caractères.');
             return;
         }
 
-        setLoading(true); // on met le bouton en mode chargement
+        setLoading(true);
 
         try {
-            // on envoie les infos au serveur
             const data = await authAPI.login(email, password);
-            // si ca marche on connecte l'utilisateur
             login(data.user, data.token);
-            // et on redirige vers le dashboard
             navigate('/dashboard');
         } catch (err) {
-            // si ca marche pas on affiche l'erreur
             setError(err.message || 'Email ou mot de passe incorrect.');
         } finally {
-            setLoading(false); // on arrete le chargement dans tous les cas
+            setLoading(false);
         }
     };
 
     return (
         <div className="login-page">
+            {/* les etoiles animees en fond */}
+            <div className="login-stars">
+                {stars.map((star) => (
+                    <div
+                        key={star.id}
+                        className={`login-star ${star.isLarge ? 'login-star--large' : ''}`}
+                        style={{
+                            left: `${star.left}%`,
+                            top: `${star.top}%`,
+                            '--star-duration': `${star.duration}s`,
+                            '--star-delay': `${star.delay}s`,
+                        }}
+                    />
+                ))}
+            </div>
+
             <div className="login-card">
-                {/* en-tete avec le logo et le titre */}
+                {/* en-tete simple avec juste le titre */}
                 <div className="login-header">
-                    <div className="login-logo">🚀</div>
-                    <h1>Mission Rover</h1>
+                    <h1>Connexion</h1>
                     <p>Identifiez-vous pour accéder au contrôle</p>
                 </div>
 
-                {/* message d'erreur (s'affiche seulement si y'a une erreur) */}
+                {/* message d'erreur */}
                 {error && <div className="login-error">{error}</div>}
 
                 {/* formulaire de connexion */}
@@ -92,7 +120,7 @@ const Login = () => {
                         fullWidth
                         loading={loading}
                     >
-                        Lancer la mission
+                        Se connecter
                     </Button>
                 </form>
 

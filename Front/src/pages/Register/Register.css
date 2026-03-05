@@ -1,4 +1,4 @@
-/* le style de la page d'inscription */
+/* style de la page d'inscription - theme spatial */
 
 .register-page {
     min-height: 100vh;
@@ -7,25 +7,82 @@
     justify-content: center;
     padding: var(--spacing-md);
     background: var(--bg-dark);
-    /* un petit degrade orange en haut */
-    background-image: radial-gradient(ellipse at 50% 0%,
-            rgba(249, 115, 22, 0.06) 0%,
-            transparent 60%);
+    position: relative;
+    overflow: hidden;
 }
 
-/* la carte au milieu */
+/* fond spatial avec nebuleuse subtile */
+.register-page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+        radial-gradient(ellipse at 80% 50%, rgba(249, 115, 22, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* conteneur des etoiles animees */
+.register-stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.register-star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: #ffffff;
+    border-radius: 50%;
+    animation: registerTwinkle var(--star-duration, 3s) ease-in-out infinite;
+    animation-delay: var(--star-delay, 0s);
+    opacity: 0;
+}
+
+.register-star--large {
+    width: 3px;
+    height: 3px;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+}
+
+@keyframes registerTwinkle {
+
+    0%,
+    100% {
+        opacity: 0.1;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* la carte d'inscription */
 .register-card {
     width: 100%;
     max-width: 420px;
-    background: var(--bg-card);
+    background: rgba(30, 41, 59, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(148, 163, 184, 0.1);
     border-radius: var(--radius-xl);
     padding: 40px 32px;
-    box-shadow: var(--shadow-lg);
-    animation: slideUp 0.5s ease forwards;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+    animation: cardAppear 0.5s ease forwards;
+    position: relative;
+    z-index: 1;
 }
 
-/* animation : la carte monte doucement */
-@keyframes slideUp {
+@keyframes cardAppear {
     from {
         opacity: 0;
         transform: translateY(20px);
@@ -37,20 +94,15 @@
     }
 }
 
-/* le haut de la carte */
+/* en-tete simple */
 .register-header {
     text-align: center;
     margin-bottom: var(--spacing-xl);
 }
 
-.register-logo {
-    font-size: 48px;
-    margin-bottom: var(--spacing-md);
-}
-
 .register-header h1 {
     color: var(--text-primary);
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-2xl);
     font-weight: 700;
     margin-bottom: var(--spacing-sm);
 }
@@ -64,34 +116,95 @@
 .register-form {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-lg);
+    gap: var(--spacing-md);
 }
 
-/* le message d'erreur rouge */
+/* message d'erreur */
 .register-error {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: var(--color-danger);
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #fca5a5;
     padding: var(--spacing-sm) var(--spacing-md);
     border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
     text-align: center;
+    animation: shake 0.4s ease;
 }
 
-/* le lien en bas "deja un compte ?" */
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-6px);
+    }
+
+    40% {
+        transform: translateX(6px);
+    }
+
+    60% {
+        transform: translateX(-4px);
+    }
+
+    80% {
+        transform: translateX(4px);
+    }
+}
+
+/* barre de force du mot de passe */
+.register-password-strength__bar {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(148, 163, 184, 0.15);
+    transition: background var(--transition-normal);
+}
+
+.register-password-strength__bar--active {
+    background: var(--color-danger);
+}
+
+.register-password-strength--medium .register-password-strength__bar--active {
+    background: var(--color-warning);
+}
+
+.register-password-strength--strong .register-password-strength__bar--active {
+    background: var(--color-success);
+}
+
+.register-password-strength__text {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* lien en bas */
 .register-footer {
     text-align: center;
-    margin-top: var(--spacing-lg);
+    margin-top: var(--spacing-xl);
     color: var(--text-secondary);
     font-size: var(--font-size-sm);
 }
 
 .register-footer a {
     color: var(--color-primary);
-    font-weight: 500;
+    font-weight: 600;
+    transition: color var(--transition-fast);
 }
 
 .register-footer a:hover {
+    color: var(--color-primary-hover);
     text-decoration: underline;
+}
+
+/* responsive */
+@media (max-width: 480px) {
+    .register-card {
+        padding: 32px 24px;
+    }
 }

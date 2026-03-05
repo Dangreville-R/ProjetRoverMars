@@ -1,4 +1,4 @@
-/* le style du bouton */
+/* le style du bouton - version premium */
 
 .btn {
     display: inline-flex;
@@ -6,26 +6,50 @@
     justify-content: center;
     gap: var(--spacing-sm);
     font-family: var(--font-family);
-    font-weight: 500;
+    font-weight: 600;
     border: none;
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all var(--transition-normal);
     outline: none;
     position: relative;
     overflow: hidden;
+    letter-spacing: 0.3px;
+}
+
+/* effet de reflet qui passe sur le bouton au hover */
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.08),
+            transparent);
+    transition: left 0.5s ease;
+}
+
+.btn:hover::before {
+    left: 100%;
 }
 
 /* quand on clique dessus, il retrecit un peu */
 .btn:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
 }
 
-/* quand le bouton est desactivé */
+/* quand le bouton est desactive */
 .btn:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
     transform: none;
+}
+
+.btn:disabled::before {
+    display: none;
 }
 
 /* les tailles */
@@ -44,43 +68,56 @@
     font-size: var(--font-size-md);
 }
 
-/* les differents styles de bouton */
+/* style primary - avec un degrade subtil */
 .btn--primary {
-    background: var(--color-primary);
+    background: linear-gradient(135deg, var(--color-primary) 0%, #4f46e5 100%);
     color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
 }
 
 .btn--primary:hover:not(:disabled) {
-    background: var(--color-primary-hover);
-    box-shadow: var(--shadow-glow);
+    background: linear-gradient(135deg, var(--color-primary-hover) 0%, #4338ca 100%);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
+    transform: translateY(-1px);
 }
 
+/* style secondary */
 .btn--secondary {
-    background: var(--color-secondary);
+    background: linear-gradient(135deg, var(--color-secondary) 0%, #ea580c 100%);
     color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.25);
 }
 
 .btn--secondary:hover:not(:disabled) {
-    background: var(--color-secondary-hover);
+    background: linear-gradient(135deg, var(--color-secondary-hover) 0%, #c2410c 100%);
+    box-shadow: 0 4px 16px rgba(249, 115, 22, 0.35);
+    transform: translateY(-1px);
 }
 
+/* style outline */
 .btn--outline {
     background: transparent;
     color: var(--color-primary);
-    border: 1px solid var(--color-primary);
+    border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .btn--outline:hover:not(:disabled) {
     background: var(--color-primary-light);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
 }
 
+/* style danger */
 .btn--danger {
-    background: var(--color-danger);
+    background: linear-gradient(135deg, var(--color-danger) 0%, #dc2626 100%);
     color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
 .btn--danger:hover:not(:disabled) {
-    background: #dc2626;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35);
+    transform: translateY(-1px);
 }
 
 /* bouton qui prend toute la largeur */
@@ -88,7 +125,7 @@
     width: 100%;
 }
 
-/* le petit spinner qui tourne quand ca charge */
+/* le spinner qui tourne quand ca charge */
 .btn--loading {
     pointer-events: none;
 }
@@ -96,10 +133,10 @@
 .btn__spinner {
     width: 18px;
     height: 18px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.25);
     border-top-color: #fff;
     border-radius: 50%;
-    animation: spin 0.6s linear infinite;
+    animation: spin 0.7s linear infinite;
 }
 
 @keyframes spin {

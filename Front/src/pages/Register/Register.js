@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button, Input } from '../../components';
 import { authAPI } from '../../services/api';
 import { isValidEmail, isValidPassword } from '../../utils/helpers';
 import './Register.css';
 
+// on genere des etoiles aleatoires pour le fond spatial
+const generateStars = (count) => {
+    const stars = [];
+    for (let i = 0; i < count; i++) {
+        stars.push({
+            id: i,
+            left: Math.random() * 100,
+            top: Math.random() * 100,
+            duration: 2 + Math.random() * 4,
+            delay: Math.random() * 3,
+            isLarge: Math.random() > 0.85,
+        });
+    }
+    return stars;
+};
+
+// on cree les etoiles une seule fois
+const stars = generateStars(50);
+
 // page d'inscription
 const Register = () => {
     const navigate = useNavigate();
 
-    // on stocke toutes les infos du formulaire dans un seul state
     const [formData, setFormData] = useState({
         username: '',
         email: '',
@@ -19,30 +37,49 @@ const Register = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // cette fonction met a jour un champ du formulaire
-    // par exemple handleChange('email') va modifier formData.email
     const handleChange = (field) => (e) => {
         setFormData((prev) => ({ ...prev, [field]: e.target.value }));
     };
 
-    // cette fonction se lance quand on clique sur "Créer mon compte"
+    // on calcule la force du mot de passe
+    const passwordStrength = useMemo(() => {
+        const pwd = formData.password;
+        if (!pwd) return { level: 0, text: '' };
+
+        let score = 0;
+        if (pwd.length >= 6) score++;
+        if (pwd.length >= 10) score++;
+        if (/[A-Z]/.test(pwd) && /[0-9]/.test(pwd)) score++;
+
+        const levels = [
+            { level: 0, text: '' },
+            { level: 1, text: 'Faible' },
+            { level: 2, text: 'Moyen' },
+            { level: 3, text: 'Fort' },
+        ];
+
+        return levels[score] || levels[0];
+    }, [formData.password]);
+
     const handleSubmit = async (e) => {
-        e.preventDefault(); // empeche le rechargement de la page
+        e.preventDefault();
         setError('');
 
-        // on verifie que l'email est correct
+        if (formData.username.trim().length < 3) {
+            setError("Le nom d'utilisateur doit contenir au moins 3 caractères.");
+            return;
+        }
+
         if (!isValidEmail(formData.email)) {
             setError('Veuillez entrer un email valide.');
             return;
         }
 
-        // on verifie que le mot de passe est assez long
         if (!isValidPassword(formData.password)) {
             setError('Le mot de passe doit contenir au moins 6 caractères.');
             return;
         }
 
-        // on verifie que les 2 mots de passe sont identiques
         if (formData.password !== formData.confirmPassword) {
             setError('Les mots de passe ne correspondent pas.');
             return;
@@ -51,28 +88,47 @@ const Register = () => {
         setLoading(true);
 
         try {
-            // on envoie les infos au serveur pour creer le compte
             await authAPI.register({
                 username: formData.username,
                 email: formData.email,
                 password: formData.password,
             });
-            // si ca marche on redirige vers la page de connexion
             navigate('/login');
         } catch (err) {
-            setError(err.message || 'Erreur lors de l\'inscription.');
+            setError(err.message || "Erreur lors de l'inscription.");
         } finally {
             setLoading(false);
         }
     };
 
+    const getStrengthClass = () => {
+        if (passwordStrength.level >= 3) return 'register-password-strength--strong';
+        if (passwordStrength.level >= 2) return 'register-password-strength--medium';
+        return '';
+    };
+
     return (
         <div className="register-page">
+            {/* les etoiles animees en fond */}
+            <div className="register-stars">
+                {stars.map((star) => (
+                    <div
+                        key={star.id}
+                        className={`register-star ${star.isLarge ? 'register-star--large' : ''}`}
+                        style={{
+                            left: `${star.left}%`,
+                            top: `${star.top}%`,
+                            '--star-duration': `${star.duration}s`,
+                            '--star-delay': `${star.delay}s`,
+                        }}
+                    />
+                ))}
+            </div>
+
             <div className="register-card">
-                {/* en-tete */}
+                {/* en-tete simple */}
                 <div className="register-header">
-                    <div className="register-logo">🛰️</div>
-                    <h1>Rejoindre la mission</h1>
+                    <h1>Inscription</h1>
                     <p>Créez votre compte pour piloter le rover</p>
                 </div>
 
@@ -101,15 +157,36 @@ const Register = () => {
                         required
                     />
 
-                    <Input
-                        label="Mot de passe"
-                        type="password"
-                        id="register-password"
-                        placeholder="••••••••"
-                        value={formData.password}
-                        onChange={handleChange('password')}
-                        required
-                    />
+                    <div>
+                        <Input
+                            label="Mot de passe"
+                            type="password"
+                            id="register-password"
+                            placeholder="••••••••"
+                            value={formData.password}
+                            onChange={handleChange('password')}
+                            required
+                        />
+                        {/* barre de force du mot de passe */}
+                        {formData.password && (
+                            <div className={`register-password-strength ${getStrengthClass()}`}>
+                                <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
+                                    {[1, 2, 3].map((bar) => (
+                                        <div
+                                            key={bar}
+                                            className={`register-password-strength__bar ${bar <= passwordStrength.level
+                                                    ? 'register-password-strength__bar--active'
+                                                    : ''
+                                                }`}
+                                        />
+                                    ))}
+                                </div>
+                                <span className="register-password-strength__text">
+                                    {passwordStrength.text}
+                                </span>
+                            </div>
+                        )}
+                    </div>
 
                     <Input
                         label="Confirmer le mot de passe"
