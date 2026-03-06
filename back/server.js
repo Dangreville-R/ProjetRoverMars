@@ -1,27 +1,19 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-<<<<<<< HEAD
 const mysql = require('mysql2/promise');
 const axios = require('axios');
-const mqtt = require('mqtt'); // <-- 1. IMPORT MQTT AJOUTÉ ICI
-=======
-const { Session } = require('api-ecoledirecte');
-
-const tempSessions = new Map();
-const mysql = require('mysql2/promise'); // pour E3 (Raphaël)
->>>>>>> b3ce4b8fb798bf7f7292520af09e83c9199065b9
+const mqtt = require('mqtt'); // Module pour le Rover
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-<<<<<<< HEAD
 // Configuration Réseau
 const PORT = process.env.PORT || 3001;
 const HOST = '172.29.17.249';
 
-// Fonction pour se connecter à la BDD de Raphaël (E3)
+// Fonction de connexion BDD (Raphael étudiant 3)
 async function getConnection() {
     return mysql.createConnection({
         host: process.env.Serveur_BDD,
@@ -32,149 +24,74 @@ async function getConnection() {
     });
 }
 
-const mqttClient = mqtt.connect('mqtt://172.29.17.249'); // L'adresse du Broker
+
+//  MQTT : RÉCEPTION NOAH
+const mqttClient = mqtt.connect('mqtt://172.29.17.249');
 
 mqttClient.on('connect', () => {
     console.log("Connecté au Broker MQTT");
-    mqttClient.subscribe('rover/mesures'); 
+    mqttClient.subscribe('rover/mesures');
 });
 
 mqttClient.on('message', async (topic, message) => {
     try {
         const data = JSON.parse(message.toString());
         const { temperature, humidite, co2 } = data;
-
-        console.log(`[MQTT] Données reçues : T=${temperature}, H=${humidite}, CO2=${co2}`);
-
-        // Sauvegarde automatique dans la BDD de Raphaël
+        
         const connection = await getConnection();
         const sql = "INSERT INTO mesures (temperature, CO2, humidite, date) VALUES (?, ?, ?, NOW())";
         await connection.execute(sql, [temperature, co2, humidite]);
         await connection.end();
-=======
-// configuration port et api
-const PORT = process.env.PORT || 3001;
-const API_E3_URL = process.env.API_E3_URL;
->>>>>>> b3ce4b8fb798bf7f7292520af09e83c9199065b9
-
-        console.log("Sauvegardé en BDD via MQTT avec succès");
+        console.log("Données MQTT enregistrées en BDD");
     } catch (e) {
-        console.error("Erreur lors de la réception MQTT :", e.message);
+        console.error("Erreur MQTT :", e.message);
     }
 });
 
+// API : ROUTES HTTP
 
-
-// ROUTE 1 : STATUT DU SERVEUR
-app.get('/api/status', (req, res) => {
-    res.json({
-        status: "online",
-        gateway: "E2 - Romain",
-        sensors: ["temperature", "humidite", "CO2"],
-        target_db: process.env.Serveur_BDD
-    });
-});
-
-// ROUTE 2 : ENREGISTREMENT (Alternative HTTP au cas où Noah change d'avis)
-app.post('/api/mesures/save', async (req, res) => {
+// Route des Mesure Live avec logique Conditionnelle
+app.get('/api/mesures/live', async (req, res) => {
     let connection;
     try {
-        const { temperature, humidite, co2 } = req.body;
         connection = await getConnection();
-        const sql = "INSERT INTO mesures (temperature, CO2, humidite, date) VALUES (?, ?, ?, NOW())";
-        await connection.execute(sql, [temperature, co2, humidite]);
-        res.json({ message: "Succès du transfert" });
-    } catch (error) {
-        res.status(500).json({ error: "erreur de transfert" });
-    } finally {
-        if (connection) await connection.end();
-    }
+        const [rows] = await connection.execute("SELECT * FROM mesures ORDER BY date DESC LIMIT 1");
+        if (rows.length > 0) {
+            const m = rows[0];
+            let alertes = [];
+            if (m.temperature > 35 || m.temperature < 5) alertes.push("Température critique !");
+            if (m.CO2 > 1000) alertes.push("CO2 élevé !");
+            if (m.humidite > 70) alertes.push("Humidité excessive !");
+            
+            res.json({ donnees: m, messages: alertes, statut: alertes.length === 0 ? "RAS" : "ALERTE" });
+        } else { res.status(404).json({ message: "Vide" }); }
+    } catch (err) { res.status(500).json({ error: err.message }); }
+    finally { if (connection) await connection.end(); }
 });
 
-// ROUTE 3 : HISTORIQUE POUR TON FRONT-END 
+// Route Historique
 app.get('/api/mesures/history', async (req, res) => {
     let connection;
     try {
         connection = await getConnection();
         const [rows] = await connection.execute("SELECT * FROM mesures ORDER BY date DESC LIMIT 50");
         res.json(rows);
-    } catch (error) {
-        res.status(500).json({ error: "Impossible de lire l'historique" });
-    } finally {
-        if (connection) await connection.end();
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
+    finally { if (connection) await connection.end(); }
 });
 
-// ROUTE 4 : RÉCUPÉRER LES 3 MESURES EN DIRECT (Avec Logique Conditionnelle)
-app.get('/api/mesures/live', async (req, res) => {
-    let connection;
-    try {
-        connection = await getConnection();
-        const [rows] = await connection.execute(
-            "SELECT temperature, CO2, humidite, date FROM mesures ORDER BY date DESC LIMIT 1"
-        );
-
-        if (rows.length > 0) {
-            const m = rows[0];
-            let alertes = [];
-            if (m.temperature > 35 || m.temperature < 5) alertes.push("Température critique !");
-            if (m.CO2 > 1000) alertes.push("CO2 trop élevé ! Danger.");
-            if (m.humidite > 70) alertes.push("Humidité trop forte !");
-
-            res.json({
-                donnees: m,
-                sauve: alertes.length === 0,
-                messages: alertes,
-                statut: alertes.length === 0 ? "RAS" : "ALERTE"
-            });
-        } else {
-            res.status(404).json({ message: "Aucune donnée" });
-        }
-    } catch (error) {
-        res.status(500).json({ error: "Erreur serveur" });
-    } finally {
-        if (connection) await connection.end();
-    }
-
-    // On envoie le choix au serveur d'Ecole Directe
-    const choice = questionData.rawPropositions[index];
-    const faResult = await session.fetch2FACreds(choice);
-
-    // Une fois validé, on se reconnecte pour avoir le token final avec les codes de sécurité
-    await session.login(identifiant, motdepasse, faResult);
-    tempSessions.delete(sessionId);
-
-    const compte = session.accounts[0];
-    res.json({
-      token: session.token,
-      user: {
-        id: compte.id,
-        prenom: compte.prenom,
-        nom: compte.nom,
-        typeCompte: compte.typeCompte,
-        email: compte.email || ''
-      }
-    });
-  } catch (error) {
-    console.error('Erreur 2FA:', error);
-    res.status(401).json({ message: error.edMessage || 'Erreur lors de la validation 2FA.' });
-  }
-});
-
-// ROUTE 5 : AUTHENTIFICATION ÉCOLE DIRECTE
+// Route Auth École Directe
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { identifiant, motdepasse } = req.body;
-        const loginData = 'data=' + JSON.stringify({ identifiant, motdepasse });
-        const response = await axios.post('https://api.ecoledirecte.com/v3/login.awp', loginData);
+        const payload = JSON.stringify({ identifiant, motdepasse });
+        const response = await axios.post(
+            'https://api.ecoledirecte.com/v3/login.awp?v=4.53.0',
+            `data=${encodeURIComponent(payload)}`,
+            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        );
         res.json(response.data);
-    } catch (error) {
-        res.status(500).json({ error: "Erreur École Directe" });
-    }
+    } catch (e) { res.status(500).json({ error: "Auth échouée" }); }
 });
 
-// Lancement du serveur
-app.listen(PORT, HOST, () => {
-    console.log("Serveur  PRÊT");
-    console.log(`URL : http://${HOST}:${PORT}`);
-});
+app.listen(PORT, HOST, () => console.log(`Serveur en ligne : http://${HOST}:${PORT}`));
