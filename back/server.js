@@ -105,7 +105,6 @@ app.get('/api/mesures/history', async (req, res) => {
     }
 });
 
-<<<<<<< HEAD
 // ROUTE 4 : RÉCUPÉRER LES 3 MESURES EN DIRECT (Avec Logique Conditionnelle)
 app.get('/api/mesures/live', async (req, res) => {
     let connection;
@@ -135,73 +134,6 @@ app.get('/api/mesures/live', async (req, res) => {
         res.status(500).json({ error: "Erreur serveur" });
     } finally {
         if (connection) await connection.end();
-=======
-// route authentification via école directe (pour Noah - étudiant 1)
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { identifiant, motdepasse } = req.body;
-    if (!identifiant || !motdepasse) {
-      return res.status(400).json({ message: 'Identifiant et mot de passe obligatoires.' });
-    }
-
-    const session = new Session();
-
-    try {
-      await session.login(identifiant, motdepasse);
-
-      // Si pas de 2FA requis
-      if (session.accounts.length > 0) {
-        const compte = session.accounts[0];
-        return res.json({
-          token: session.token,
-          user: {
-            id: compte.id,
-            prenom: compte.prenom,
-            nom: compte.nom,
-            typeCompte: compte.typeCompte,
-            email: compte.email || ''
-          }
-        });
-      }
-    } catch (err) {
-      if (err.code === 250) {
-        // Double authentification requise
-        const questionData = await session.fetch2FAQuestion(identifiant, motdepasse);
-        const sessionId = Date.now().toString();
-        tempSessions.set(sessionId, { session, identifiant, motdepasse, questionData });
-
-        return res.json({
-          twoFactorRequired: true,
-          sessionId,
-          question: questionData.question,
-          propositions: questionData.propositions
-        });
-      }
-      return res.status(401).json({ message: err.edMessage || 'Identifiant ou mot de passe incorrect.' });
-    }
-  } catch (error) {
-    console.error('Erreur login:', error);
-    res.status(500).json({ message: 'Erreur serveur lors de la connexion.' });
-  }
-});
-
-// Route pour valider la 2FA
-app.post('/api/auth/login/2fa/verify', async (req, res) => {
-  try {
-    const { sessionId, answer } = req.body;
-    const temp = tempSessions.get(sessionId);
-
-    if (!temp) {
-      return res.status(400).json({ message: 'Session expirée ou invalide. Veuillez recommencer.' });
-    }
-
-    const { session, identifiant, motdepasse, questionData } = temp;
-
-    // On trouve l'index de la réponse
-    const index = questionData.propositions.indexOf(answer);
-    if (index === -1) {
-      return res.status(400).json({ message: 'Réponse invalide.' });
->>>>>>> b3ce4b8fb798bf7f7292520af09e83c9199065b9
     }
 
     // On envoie le choix au serveur d'Ecole Directe
@@ -241,16 +173,8 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-<<<<<<< HEAD
 // Lancement du serveur
 app.listen(PORT, HOST, () => {
     console.log("Serveur  PRÊT");
     console.log(`URL : http://${HOST}:${PORT}`);
-=======
-// lancement du serveur
-const BIND_IP = '0.0.0.0';
-app.listen(PORT, BIND_IP, () => {
-  console.log(` SERVEUR E2 EN LIGNE`);
-  console.log(` Ecoute sur : http://${BIND_IP}:${PORT}`);
->>>>>>> b3ce4b8fb798bf7f7292520af09e83c9199065b9
 });
