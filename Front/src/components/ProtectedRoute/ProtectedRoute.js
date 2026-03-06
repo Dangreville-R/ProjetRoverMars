@@ -2,12 +2,11 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
-// ce composant protege les pages qui necessitent d'etre connecté
-// si l'utilisateur est pas connecté, on le redirige vers /login
+// Protège les pages nécessitant une connexion
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useAuth();
 
-    // pendant qu'on verifie si l'utilisateur est connecté on affiche "Chargement..."
+    // Affiche le chargement de vérification
     if (loading) {
         return (
             <div style={{
@@ -22,12 +21,12 @@ const ProtectedRoute = ({ children }) => {
         );
     }
 
-    // si l'utilisateur est pas connecté on le redirige vers login
+    // Redirige vers login si non connecté
     if (!user) {
         return <Navigate to="/login" replace />;
     }
 
-    // sinon on affiche la page normalement
+    // Affiche la page si connecté
     return children;
 };
 

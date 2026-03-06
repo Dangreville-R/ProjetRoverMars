@@ -7,46 +7,45 @@ import Historique from './tabs/Historique';
 import Admin from './tabs/Admin';
 import './Dashboard.css';
 
-// page dashboard - c'est la page principale quand on est connecte
+// Page principale quand on est co
 const Dashboard = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
 
-    // state pour le statut de connexion du rover
-    // en vrai ca serait mis a jour par une connexion MQTT ou un appel API
+    // Statut de connexion du rover
     const [roverConnected, setRoverConnected] = useState(false);
 
-    // state pour ouvrir/fermer le menu mobile
+    // État du menu mobile
     const [menuOpen, setMenuOpen] = useState(false);
 
-    // fonction pour se deconnecter
+    // Fonction de déconnexion
     const handleLogout = () => {
         logout();
         navigate('/login');
     };
 
-    // les onglets de navigation
+    // Onglets du menu
     const tabs = [
         { path: 'temps-reel', label: 'Temps Réel', icon: '📡' },
         { path: 'historique', label: 'Historique', icon: '📊' },
         { path: 'admin', label: 'Admin', icon: '⚙️' },
     ];
 
-    // le nom a afficher (on gere les 2 formats : École Directe et custom)
+    // Nom à afficher
     const displayName = user?.prenom
         ? `${user.prenom} ${user.nom}`
         : user?.username || 'Pilote';
 
     return (
         <div className="dashboard">
-            {/* barre de navigation en haut */}
+            {/* Navigation en haut */}
             <nav className="dashboard-nav">
                 <div className="dashboard-nav__left">
                     <div className="dashboard-nav__brand">
                         <span className="dashboard-nav__title">Rover Mars</span>
                     </div>
 
-                    {/* statut de connexion du rover */}
+                    {/* Bouton statut du rover */}
                     <button
                         className={`dashboard-rover-status ${roverConnected ? 'dashboard-rover-status--online' : ''}`}
                         onClick={() => setRoverConnected(!roverConnected)}
@@ -59,7 +58,7 @@ const Dashboard = () => {
                     </button>
                 </div>
 
-                {/* bouton hamburger pour mobile */}
+                {/* Menu burger */}
                 <button
                     className={`dashboard-nav__burger ${menuOpen ? 'dashboard-nav__burger--open' : ''}`}
                     onClick={() => setMenuOpen(!menuOpen)}
@@ -71,7 +70,7 @@ const Dashboard = () => {
                 </button>
 
                 <div className={`dashboard-nav__right ${menuOpen ? 'dashboard-nav__right--open' : ''}`}>
-                    {/* onglets de navigation */}
+                    {/* Onglets de navigation */}
                     <div className="dashboard-tabs">
                         {tabs.map((tab) => (
                             <NavLink
@@ -88,7 +87,7 @@ const Dashboard = () => {
                         ))}
                     </div>
 
-                    {/* infos utilisateur et deconnexion */}
+                    {/* Déconnexion */}
                     <div className="dashboard-nav__user-section">
                         <span className="dashboard-nav__user">
                             {displayName}
@@ -100,10 +99,10 @@ const Dashboard = () => {
                 </div>
             </nav>
 
-            {/* contenu principal avec les sous-routes */}
+            {/* Contenu de la page */}
             <main className="dashboard-content">
                 <Routes>
-                    {/* par defaut on redirige vers temps-reel */}
+                    {/* Redirection par défaut */}
                     <Route index element={<Navigate to="temps-reel" replace />} />
                     <Route path="temps-reel" element={<TempsReel roverConnected={roverConnected} />} />
                     <Route path="historique" element={<Historique />} />

@@ -5,20 +5,19 @@ import Login from './pages/Login/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import './App.css';
 
-// c'est le composant principal de l'application
-// c'est ici qu'on definit toutes les pages et les routes
+// Application principale avec les routes
 function App() {
   return (
     <Router>
       <div className="App">
         <Routes>
-          {/* quand on va sur "/", on redirige vers la page login */}
+          {/* Redirection vers login par défaut */}
           <Route path="/" element={<Navigate to="/login" replace />} />
 
-          {/* la page pour se connecter via École Directe */}
+          {/* Page de connexion */}
           <Route path="/login" element={<Login />} />
 
-          {/* le dashboard avec les sous-onglets (temps-reel, historique, admin) */}
+          {/* Espace connecté (Dashboard) */}
           <Route
             path="/dashboard/*"
             element={

@@ -11,9 +11,11 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "api-ecoledirecte": "^1.4.5",
     "axios": "^1.13.5",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
+    "ecoledirecte.js": "^1.0.0",
     "express": "^5.2.1",
     "mqtt": "^5.15.0",
     "mysql2": "^3.17.0",

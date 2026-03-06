@@ -1,6 +1,4 @@
-// ce fichier permet d'importer tous les composants depuis un seul endroit
-// au lieu de faire import Button from '../components/Button/Button'
-// on peut faire import { Button } from '../components'
+// Exporte tous les composants au même endroit
 
 export { default as Button } from './Button/Button';
 export { default as Input } from './Input/Input';

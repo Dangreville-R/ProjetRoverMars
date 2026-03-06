@@ -5,7 +5,7 @@ import { authAPI } from '../../services/api';
 import { isValidEmail, isValidPassword } from '../../utils/helpers';
 import './Register.css';
 
-// on genere des etoiles aleatoires pour le fond spatial
+// Génère des étoiles pour le fond
 const generateStars = (count) => {
     const stars = [];
     for (let i = 0; i < count; i++) {
@@ -21,10 +21,10 @@ const generateStars = (count) => {
     return stars;
 };
 
-// on cree les etoiles une seule fois
+// Crée les étoiles une fois
 const stars = generateStars(50);
 
-// page d'inscription
+// Page d'inscription
 const Register = () => {
     const navigate = useNavigate();
 
@@ -41,7 +41,7 @@ const Register = () => {
         setFormData((prev) => ({ ...prev, [field]: e.target.value }));
     };
 
-    // on calcule la force du mot de passe
+    // Calcule la force du mot de passe
     const passwordStrength = useMemo(() => {
         const pwd = formData.password;
         if (!pwd) return { level: 0, text: '' };
@@ -109,7 +109,7 @@ const Register = () => {
 
     return (
         <div className="register-page">
-            {/* les etoiles animees en fond */}
+            {/* Étoiles animées en fond */}
             <div className="register-stars">
                 {stars.map((star) => (
                     <div
@@ -126,16 +126,16 @@ const Register = () => {
             </div>
 
             <div className="register-card">
-                {/* en-tete simple */}
+                {/* En-tête */}
                 <div className="register-header">
                     <h1>Inscription</h1>
                     <p>Créez votre compte pour piloter le rover</p>
                 </div>
 
-                {/* message d'erreur */}
+                {/* Message d'erreur */}
                 {error && <div className="register-error">{error}</div>}
 
-                {/* formulaire d'inscription */}
+                {/* Formulaire d'inscription */}
                 <form onSubmit={handleSubmit} className="register-form">
                     <Input
                         label="Nom d'utilisateur"
@@ -167,7 +167,7 @@ const Register = () => {
                             onChange={handleChange('password')}
                             required
                         />
-                        {/* barre de force du mot de passe */}
+                        {/* Barre de force du mot de passe */}
                         {formData.password && (
                             <div className={`register-password-strength ${getStrengthClass()}`}>
                                 <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
@@ -175,8 +175,8 @@ const Register = () => {
                                         <div
                                             key={bar}
                                             className={`register-password-strength__bar ${bar <= passwordStrength.level
-                                                    ? 'register-password-strength__bar--active'
-                                                    : ''
+                                                ? 'register-password-strength__bar--active'
+                                                : ''
                                                 }`}
                                         />
                                     ))}
@@ -208,7 +208,7 @@ const Register = () => {
                     </Button>
                 </form>
 
-                {/* lien vers la page de connexion */}
+                {/* Lien de connexion */}
                 <p className="register-footer">
                     Déjà un compte ?{' '}
                     <Link to="/login">Se connecter</Link>

@@ -1,19 +1,17 @@
-// helpers.js - fonctions utilitaires qu'on reutilise dans le projet
+// Fonctions utilitaires
 
-// verifie si un email est valide (avec un regex)
-// par exemple "test@gmail.com" retourne true, "test" retourne false
+// Vérifie l'email (Regex)
 export const isValidEmail = (email) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
 };
 
-// verifie si le mot de passe est assez long (minimum 6 caracteres)
+// Vérifie la longueur du mot de passe (min 6)
 export const isValidPassword = (password) => {
     return password && password.length >= 6;
 };
 
-// formate une date en français
-// par exemple "2024-01-15" devient "15 janvier 2024 à 00:00"
+// Formate la date en français
 export const formatDate = (date) => {
     return new Date(date).toLocaleDateString('fr-FR', {
         day: '2-digit',
@@ -24,8 +22,7 @@ export const formatDate = (date) => {
     });
 };
 
-// met la premiere lettre en majuscule
-// par exemple "bonjour" devient "Bonjour"
+// Mets la première lettre en majuscule
 export const capitalize = (str) => {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1);

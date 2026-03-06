@@ -1,64 +1,59 @@
 import React, { createContext, useState, useEffect } from 'react';
 
-// on cree un contexte pour gerer l'authentification dans toute l'appli
-// comme ca on peut savoir si l'utilisateur est connecté partout
+// Contexte d'authentification global
 export const AuthContext = createContext(null);
 
-// ce composant va entourer toute l'application (dans index.js)
-// il fournit les infos de connexion a tous les autres composants
+// Wrappe l'application pour fournir les infos de connexion
 export const AuthProvider = ({ children }) => {
-    // state pour stocker les infos de l'utilisateur
+    // Infos de l'utilisateur
     const [user, setUser] = useState(null);
-    // state pour savoir si on est en train de charger
+    // État de chargement
     const [loading, setLoading] = useState(true);
 
-    // useEffect se lance au chargement de la page
-    // on verifie si l'utilisateur etait deja connecté avant (token dans localStorage)
+    // Vérifie le token au chargement
     useEffect(() => {
         const token = localStorage.getItem('token');
         const savedUser = localStorage.getItem('user');
 
-        // si on a un token et un user sauvegardé, on les charge
+        // Charge l'utilisateur si token présent
         if (token && savedUser) {
             try {
                 setUser(JSON.parse(savedUser));
             } catch (error) {
-                // si y'a une erreur (json cassé par exemple) on nettoie tout
+                // Nettoie tout si erreur
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
             }
         }
 
-        // on a fini de charger
+        // Fin du chargement
         setLoading(false);
     }, []);
 
-    // fonction pour connecter l'utilisateur
-    // on sauvegarde le token et les infos dans le localStorage
+    // Connecte l'utilisateur et sauvegarde le token
     const login = (userData, token) => {
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
     };
 
-    // fonction pour deconnecter l'utilisateur
-    // on supprime tout du localStorage
+    // Déconnecte l'utilisateur et vide le localStorage
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
     };
 
-    // on met toutes les valeurs qu'on veut partager dans l'appli
+    // Valeurs partagées
     const value = {
         user,
         loading,
         login,
         logout,
-        isAuthenticated: !!user, // true si user existe, false sinon
+        isAuthenticated: !!user, // Vrai si connecté
     };
 
-    // on retourne le Provider avec toutes les valeurs
+    // Retourne le Provider
     return (
         <AuthContext.Provider value={value}>
             {children}
