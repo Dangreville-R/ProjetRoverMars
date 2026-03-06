@@ -84,14 +84,50 @@ app.get('/api/mesures/history', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { identifiant, motdepasse } = req.body;
+        
+        if (!identifiant || !motdepasse) {
+            return res.status(400).json({ message: 'Identifiant et mot de passe obligatoires.' });
+        }
+
+        // On prépare les données comme dans ton script de test qui marche
         const payload = JSON.stringify({ identifiant, motdepasse });
+        
         const response = await axios.post(
-            'https://api.ecoledirecte.com/v3/login.awp?v=4.53.0',
-            `data=${encodeURIComponent(payload)}`,
-            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+            'https://api.ecoledirecte.com/v3/login.awp?v=4.53.0', // <-- Ajout de la version
+            `data=${encodeURIComponent(payload)}`, // <-- Encodage plus sûr
+            {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' // <-- User-Agent plus "crédible"
+                }
+            }
         );
-        res.json(response.data);
-    } catch (e) { res.status(500).json({ error: "Auth échouée" }); }
+
+        const data = response.data;
+
+        if (data.code === 200 && data.token) {
+            // On récupère le premier compte trouvé (élève)
+            const compte = data.data.accounts[0];
+            
+            console.log(`Connexion réussie pour ${compte.prenom} ${compte.nom}`);
+
+            res.json({
+                token: data.token,
+                user: {
+                    id: compte.id,
+                    prenom: compte.prenom,
+                    nom: compte.nom,
+                    typeCompte: compte.typeCompte,
+                    email: compte.email || ''
+                }
+            });
+        } else {
+            res.status(401).json({ message: data.message || 'Identifiant ou mot de passe incorrect.' });
+        }
+    } catch (error) {
+        console.error('Erreur login École Directe:', error.message);
+        res.status(500).json({ message: 'Impossible de contacter École Directe.' });
+    }
 });
 
 app.listen(PORT, HOST, () => console.log(`Serveur en ligne : http://${HOST}:${PORT}`));
