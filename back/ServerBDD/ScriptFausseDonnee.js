@@ -25,9 +25,9 @@ async function generateFakeData() {
   for (let i = 0; i < totalMesures; i++) {
     const mesureDate = new Date(now.getTime() - (24 * 60 * 60 * 1000) + (i * intervalleMs));
 
-    const temperature = Math.floor(Math.random() * 61) - 40;
-    const co2 = Math.floor(Math.random() * 500) + 800;
-    const humidite = Math.floor(Math.random() * 11) + 5;
+    const temperature = Math.floor(Math.random() * 61) - 40; // en degres Celsius, entre -40°C et +20°C
+    const co2 = Math.floor(Math.random() * 500) + 800; // la concentration de dioxyde de carbone en ppm (parties par million) | ppm = unité de concentrationpour mesurer la proportion d'un gaz dans l'air.
+    const humidite = Math.floor(Math.random() * 11) + 5; // En pourcentage
 
     await insertMesure(connection, temperature, co2, humidite, mesureDate, roverId);
   }
