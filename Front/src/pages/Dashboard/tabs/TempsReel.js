@@ -1,46 +1,51 @@
 import React, { useState, useEffect } from 'react';
+import { Thermometer, Droplets, Wind, AlertCircle, Radio } from 'lucide-react';
 import './TempsReel.css';
 
 // Page Temps Réel
 const TempsReel = ({ roverConnected }) => {
-    // Fausses données
+    // Données réelles
     const [data, setData] = useState({
         temperature: '--',
         humidite: '--',
-        pression: '--',
-        luminosite: '--',
-        batterie: '--',
-        vitesse: '--',
+        co2: '--',
     });
+    const [alertes, setAlertes] = useState([]);
 
-    // Boucle de 3s pour les données
+    // Fetch de l'API live
     useEffect(() => {
         if (!roverConnected) return;
 
-        const generateData = () => {
-            setData({
-                temperature: (Math.random() * 30 - 60).toFixed(1),
-                humidite: (Math.random() * 5 + 0.1).toFixed(1),
-                pression: (Math.random() * 2 + 5.5).toFixed(1),
-                luminosite: Math.floor(Math.random() * 100),
-                batterie: Math.floor(Math.random() * 30 + 65),
-                vitesse: (Math.random() * 0.15).toFixed(3),
-            });
+        const fetchData = async () => {
+            try {
+                // Remplacer par l'URL dynamique si nécessaire ou le proxy proxy react
+                const response = await fetch('/api/mesures/live');
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.donnees) {
+                        setData({
+                            temperature: result.donnees.temperature.toFixed(1),
+                            humidite: result.donnees.humidite.toFixed(1),
+                            co2: result.donnees.CO2,
+                        });
+                        setAlertes(result.messages || []);
+                    }
+                }
+            } catch (error) {
+                console.error("Erreur de récupération des données live:", error);
+            }
         };
 
-        generateData();
-        const interval = setInterval(generateData, 3000);
+        fetchData();
+        const interval = setInterval(fetchData, 3000);
         return () => clearInterval(interval);
     }, [roverConnected]);
 
-    // Cartes affichées
+    // Cartes affichées cohérentes avec la base de données
     const cards = [
-        { label: 'Température', value: `${data.temperature}°C`, icon: '🌡️', color: '#f97316' },
-        { label: 'Humidité', value: `${data.humidite}%`, icon: '💧', color: '#06b6d4' },
-        { label: 'Pression', value: `${data.pression} hPa`, icon: '🌪️', color: '#8b5cf6' },
-        { label: 'Luminosité', value: `${data.luminosite}%`, icon: '☀️', color: '#eab308' },
-        { label: 'Batterie', value: `${data.batterie}%`, icon: '🔋', color: '#22c55e' },
-        { label: 'Vitesse', value: `${data.vitesse} m/s`, icon: '🏎️', color: '#3b82f6' },
+        { label: 'Température', value: `${data.temperature}°C`, icon: <Thermometer size={24} />, color: '#f97316' },
+        { label: 'Humidité', value: `${data.humidite}%`, icon: <Droplets size={24} />, color: '#06b6d4' },
+        { label: 'CO2', value: `${data.co2} ppm`, icon: <Wind size={24} />, color: '#8b5cf6' },
     ];
 
     return (
@@ -52,12 +57,21 @@ const TempsReel = ({ roverConnected }) => {
 
             {!roverConnected ? (
                 <div className="temps-reel__offline">
-                    <span className="temps-reel__offline-icon">📡</span>
+                    <span className="temps-reel__offline-icon"><Radio size={48} /></span>
                     <h3>Rover déconnecté</h3>
                     <p>En attente de connexion avec le rover...</p>
                 </div>
             ) : (
-                <div className="temps-reel__grid">
+                <div className="temps-reel__grid-container">
+                    {alertes.length > 0 && (
+                        <div className="temps-reel__alerts">
+                            <AlertCircle size={20} className="temps-reel__alert-icon" />
+                            <div className="temps-reel__alert-messages">
+                                {alertes.map((msg, i) => <span key={i}>{msg}</span>)}
+                            </div>
+                        </div>
+                    )}
+                    <div className="temps-reel__grid">
                     {cards.map((card, index) => (
                         <div
                             key={card.label}
@@ -77,6 +91,7 @@ const TempsReel = ({ roverConnected }) => {
                             </div>
                         </div>
                     ))}
+                    </div>
                 </div>
             )}
         </div>
