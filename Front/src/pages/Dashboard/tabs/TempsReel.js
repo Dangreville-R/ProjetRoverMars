@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Thermometer, Droplets, Wind, AlertCircle, Radio } from 'lucide-react';
+import { Thermometer, Droplets, Wind, AlertCircle, Radio, ShieldCheck } from 'lucide-react';
 import './TempsReel.css';
 
 // Page Temps Réel
@@ -11,8 +11,11 @@ const TempsReel = ({ roverConnected }) => {
         co2: '--',
     });
     const [alertes, setAlertes] = useState([]);
+    
+    // Viabilité
+    const [viabilite, setViabilite] = useState(null);
 
-    // Fetch de l'API live
+    // Fetch de l'API live et Viabilité
     useEffect(() => {
         if (!roverConnected) return;
 
@@ -36,8 +39,26 @@ const TempsReel = ({ roverConnected }) => {
             }
         };
 
+        const fetchViabilite = async () => {
+             try {
+                 const response = await fetch('/api/mesures/viabilite');
+                 if (response.ok) {
+                     const result = await response.json();
+                     setViabilite(result);
+                 }
+             } catch (error) {
+                 console.error("Erreur de récupération de la viabilité:", error);
+             }
+         };
+
         fetchData();
-        const interval = setInterval(fetchData, 3000);
+        fetchViabilite();
+        
+        const interval = setInterval(() => {
+            fetchData();
+            fetchViabilite();
+        }, 3000);
+        
         return () => clearInterval(interval);
     }, [roverConnected]);
 
@@ -92,10 +113,52 @@ const TempsReel = ({ roverConnected }) => {
                         </div>
                     ))}
                     </div>
+
+                    {/* Section Viabilité */}
+                    {viabilite && (
+                        <div className="temps-reel__viabilite">
+                            <div className="temps-reel__viabilite-header">
+                                <ShieldCheck size={28} className="temps-reel__viabilite-icon" />
+                                <h3>Score de Viabilité Globale</h3>
+                                <span className={`temps-reel__viabilite-badge viabilite-${viabilite.statut.toLowerCase()}`}>
+                                    {viabilite.statut}
+                                </span>
+                            </div>
+                            <div className="temps-reel__viabilite-content">
+                                <div className="temps-reel__viabilite-score-box">
+                                    <div className="temps-reel__viabilite-score">
+                                        <span className="temps-reel__viabilite-score-value">{viabilite.score}</span>
+                                        <span className="temps-reel__viabilite-score-max">/100</span>
+                                    </div>
+                                    <div className="temps-reel__viabilite-progress-bg">
+                                        <div 
+                                            className="temps-reel__viabilite-progress-fill" 
+                                            style={{ width: `${viabilite.score}%`, backgroundColor: getScoreColor(viabilite.score) }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="temps-reel__viabilite-details">
+                                    <p className="temps-reel__viabilite-subtitle">Moyennes récentes & Seuils :</p>
+                                    <ul className="temps-reel__viabilite-list">
+                                        <li>Température : <strong>{viabilite.moyennes.T_moy}°C</strong> <span>(Idéal : 5°C - 35°C)</span></li>
+                                        <li>Humidité : <strong>{viabilite.moyennes.H_moy}%</strong> <span>(Max : 70%)</span></li>
+                                        <li>CO2 : <strong>{viabilite.moyennes.CO2_moy} ppm</strong> <span>(Max : 1000 ppm)</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
     );
+};
+
+// Fonction utilitaire pour la couleur de la barre
+const getScoreColor = (score) => {
+    if (score > 80) return '#22c55e'; // Favorable (vert)
+    if (score >= 50) return '#eab308'; // Limite (jaune)
+    return '#ef4444'; // Inhospitalier (rouge)
 };
 
 export default TempsReel;

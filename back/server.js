@@ -95,6 +95,55 @@ mqttClient.on('message', async (topic, message) => {
     }
 });
 
+// Fonction utilitaire pour le calcul de viabilité
+function calculerViabilite(mesures, seuilsAdmin) {
+    if (!mesures || mesures.length === 0) {
+        return { score: 0, statut: "Inconnu", moyennes: { T_moy: 0, CO2_moy: 0, H_moy: 0 } };
+    }
+
+    const { T_min, T_max, CO2_max, H_max } = seuilsAdmin;
+
+    // Logique de moyenne
+    let sumT = 0, sumCO2 = 0, sumH = 0;
+    mesures.forEach(m => {
+        sumT += Number(m.temperature);
+        sumCO2 += Number(m.CO2);
+        sumH += Number(m.humidite);
+    });
+
+    const total = mesures.length;
+    const T_moy = sumT / total;
+    const CO2_moy = sumCO2 / total;
+    const H_moy = sumH / total;
+
+    // Comparaison aux seuils (Admin) et Calcul du Score
+    let score = 100;
+
+    // Pénalités
+    if (T_moy < T_min) score -= (T_min - T_moy) * 5;
+    else if (T_moy > T_max) score -= (T_moy - T_max) * 5;
+
+    if (CO2_moy > CO2_max) score -= ((CO2_moy - CO2_max) / 50);
+    if (H_moy > H_max) score -= (H_moy - H_max) * 2;
+
+    score = Math.max(0, Math.min(100, Math.round(score)));
+
+    // Statut
+    let statut = "Favorable";
+    if (score < 50) statut = "Inhospitalier";
+    else if (score <= 80) statut = "Limite";
+
+    return {
+        score,
+        statut,
+        moyennes: {
+            T_moy: Number(T_moy.toFixed(2)),
+            CO2_moy: Number(CO2_moy.toFixed(2)),
+            H_moy: Number(H_moy.toFixed(2))
+        }
+    };
+}
+
 // API : ROUTES HTTP
 
 // Route statut serveur
@@ -126,8 +175,29 @@ app.get('/api/mesures/history', async (req, res) => {
     let connection;
     try {
         connection = await getConnection();
-        const [rows] = await connection.execute("SELECT * FROM mesures ORDER BY date DESC LIMIT 50");
+        const [rows] = await connection.execute("SELECT * FROM mesures ORDER BY date DESC LIMIT 100");
         res.json(rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+    finally { if (connection) await connection.end(); }
+});
+
+// Route Viabilité (Admin)
+app.get('/api/mesures/viabilite', async (req, res) => {
+    let connection;
+    try {
+        connection = await getConnection();
+        const [rows] = await connection.execute("SELECT * FROM mesures ORDER BY date DESC LIMIT 50");
+        
+        // Seuils Admin par défaut
+        const seuilsAdmin = {
+            T_min: 5,
+            T_max: 35,
+            CO2_max: 1000,
+            H_max: 70
+        };
+
+        const result = calculerViabilite(rows, seuilsAdmin);
+        res.json(result);
     } catch (err) { res.status(500).json({ error: err.message }); }
     finally { if (connection) await connection.end(); }
 });
