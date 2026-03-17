@@ -144,4 +144,108 @@
     .historique__select {
         width: 100%;
     }
+}/* ===============================
+   CONTROLES D'AFFICHAGE DU GRAPHIQUE
+   =============================== */
+
+.historique__controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.historique__view-toggle {
+    display: flex;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: var(--radius-md);
+    padding: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.historique__toggle-btn {
+    padding: 6px 16px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.historique__toggle-btn:hover {
+    color: var(--text-primary);
+}
+
+.historique__toggle-btn.active {
+    background: var(--color-primary);
+    color: white;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+/* ===============================
+   CONTENEUR DU GRAPHIQUE RECHARTS
+   =============================== */
+
+.historique__chart-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    animation: fadeScaleIn 0.4s ease forwards;
+}
+
+@keyframes fadeScaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.historique__chart-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+    justify-content: center;
+}
+
+.historique__chart-controls button {
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.historique__chart-controls button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.historique__chart-controls button.active {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+}
+
+.historique__chart-wrapper {
+    width: 100%;
+    margin-top: var(--spacing-md);
+}
+
+/* Style de la bordure du Tooltip de Recharts */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+    border-radius: var(--radius-md) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
 }

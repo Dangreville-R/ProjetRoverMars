@@ -1,8 +1,7 @@
-// 1. Importer les modules nécessaires
-require('dotenv').config(); // Charge les variables du fichier .env
-const mysql = require('mysql2/promise'); // Version 'promise' pour utiliser async/await
+require('dotenv').config();
+const mysql = require('mysql2'); // On utilise la version standard pour correspondre à tes étapes
 
-// 2. Créer le pool de connexion avec les paramètres du .env
+// 1. Créer le pool de connexion
 const pool = mysql.createPool({
   host: process.env.Serveur_BDD,
   user: process.env.User_BDD,
@@ -13,27 +12,20 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-/**
- * 3. Vérifier la connexion au démarrage
- * On tente de récupérer une connexion du pool pour valider les identifiants
- */
-async function checkConnection() {
-  try {
-    const connection = await pool.getConnection();
-    // 4. Afficher le message de succès
-    console.log(" Connecté à la BDD ! (Projet RoverMars)");
-    connection.release(); // Libère la connexion pour qu'elle retourne dans le pool
-  } catch (err) {
-    console.error(" Erreur de connexion à la base de données :", err.message);
-    process.exit(1); // Arrête le script si la BDD est injoignable
+// 2. Ajouter un pool.getConnection() pour vérifier la réponse
+pool.getConnection((err, connection) => {
+  if (err) {
+    console.error("Erreur de connexion à la BDD :", err.message);
+    return;
   }
-}
+  // 3. Afficher le message en cas de succès
+  console.log("Connecté à la BDD !");
+  
+  // Important : on libère la connexion après le test
+  connection.release();
+});
 
-checkConnection();
-
-/**
- * 5. Rendre le pool accessible aux autres fichiers
- */
+// 4. Rendre le pool accessible (module.exports)
 module.exports = pool;
 
 /** pour utiliser le pool dans d'autres fichiers: *

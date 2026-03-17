@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
+import { Radio, BarChart2, Settings } from 'lucide-react';
 import { Button } from '../../components';
 import { useAuth } from '../../hooks/useAuth';
 import TempsReel from './tabs/TempsReel';
@@ -26,9 +27,9 @@ const Dashboard = () => {
 
     // Onglets du menu
     const tabs = [
-        { path: 'temps-reel', label: 'Temps Réel', icon: '📡' },
-        { path: 'historique', label: 'Historique', icon: '📊' },
-        { path: 'admin', label: 'Admin', icon: '⚙️' },
+        { path: 'temps-reel', label: 'Temps Réel', icon: <Radio size={20} /> },
+        { path: 'historique', label: 'Historique', icon: <BarChart2 size={20} /> },
+        { path: 'admin', label: 'Admin', icon: <Settings size={20} /> },
     ];
 
     // Nom à afficher
@@ -105,7 +106,7 @@ const Dashboard = () => {
                     {/* Redirection par défaut */}
                     <Route index element={<Navigate to="temps-reel" replace />} />
                     <Route path="temps-reel" element={<TempsReel roverConnected={roverConnected} />} />
-                    <Route path="historique" element={<Historique />} />
+                    <Route path="historique" element={<Historique roverConnected={roverConnected} />} />
                     <Route path="admin" element={<Admin />} />
                 </Routes>
             </main>

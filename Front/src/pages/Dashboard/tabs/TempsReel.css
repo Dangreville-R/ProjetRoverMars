@@ -167,4 +167,194 @@
     .temps-reel__card-value {
         font-size: 24px;
     }
+}.temps-reel__alerts {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius-md);
+    color: var(--color-danger);
+    margin-bottom: var(--spacing-md);
+}
+
+.temps-reel__alert-icon {
+    flex-shrink: 0;
+}
+
+.temps-reel__alert-messages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+}
+
+/* ===== SECTION VIABILITÉ ===== */
+.temps-reel__viabilite {
+    margin-top: var(--spacing-xl);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    animation: cardSlideIn 0.5s ease forwards;
+    opacity: 0;
+}
+
+.temps-reel__viabilite-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: var(--spacing-md);
+}
+
+.temps-reel__viabilite-icon {
+    color: var(--color-primary);
+}
+
+.temps-reel__viabilite-header h3 {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    color: var(--text-primary);
+    flex-grow: 1;
+}
+
+.temps-reel__viabilite-badge {
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Badges Statuts */
+.viabilite-favorable {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.viabilite-limite {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.viabilite-inhospitalier {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.temps-reel__viabilite-content {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: var(--spacing-xl);
+    align-items: center;
+}
+
+.temps-reel__viabilite-score-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.4);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.temps-reel__viabilite-score {
+    margin-bottom: var(--spacing-sm);
+}
+
+.temps-reel__viabilite-score-value {
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.temps-reel__viabilite-score-max {
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.temps-reel__viabilite-progress-bg {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.temps-reel__viabilite-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 1s ease-in-out, background-color 0.5s ease;
+}
+
+.temps-reel__viabilite-details {
+    padding-left: var(--spacing-md);
+    border-left: 2px solid rgba(255, 255, 255, 0.05);
+}
+
+.temps-reel__viabilite-subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.temps-reel__viabilite-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.temps-reel__viabilite-list li {
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.temps-reel__viabilite-list li strong {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.temps-reel__viabilite-list li span {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+/* responsive mobile viabilité */
+@media (max-width: 768px) {
+    .temps-reel__viabilite-content {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
+    }
+
+    .temps-reel__viabilite-details {
+        border-left: none;
+        padding-left: 0;
+        border-top: 2px solid rgba(255, 255, 255, 0.05);
+        padding-top: var(--spacing-lg);
+    }
 }

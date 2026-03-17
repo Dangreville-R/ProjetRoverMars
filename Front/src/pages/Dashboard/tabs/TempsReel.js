@@ -1,46 +1,72 @@
 import React, { useState, useEffect } from 'react';
+import { Thermometer, Droplets, Wind, AlertCircle, Radio, ShieldCheck } from 'lucide-react';
 import './TempsReel.css';
 
 // Page Temps Réel
 const TempsReel = ({ roverConnected }) => {
-    // Fausses données
+    // Données réelles
     const [data, setData] = useState({
         temperature: '--',
         humidite: '--',
-        pression: '--',
-        luminosite: '--',
-        batterie: '--',
-        vitesse: '--',
+        co2: '--',
     });
+    const [alertes, setAlertes] = useState([]);
+    
+    // Viabilité
+    const [viabilite, setViabilite] = useState(null);
 
-    // Boucle de 3s pour les données
+    // Fetch de l'API live et Viabilité
     useEffect(() => {
         if (!roverConnected) return;
 
-        const generateData = () => {
-            setData({
-                temperature: (Math.random() * 30 - 60).toFixed(1),
-                humidite: (Math.random() * 5 + 0.1).toFixed(1),
-                pression: (Math.random() * 2 + 5.5).toFixed(1),
-                luminosite: Math.floor(Math.random() * 100),
-                batterie: Math.floor(Math.random() * 30 + 65),
-                vitesse: (Math.random() * 0.15).toFixed(3),
-            });
+        const fetchData = async () => {
+            try {
+                // Remplacer par l'URL dynamique si nécessaire ou le proxy proxy react
+                const response = await fetch('/api/mesures/live');
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.donnees) {
+                        setData({
+                            temperature: result.donnees.temperature.toFixed(1),
+                            humidite: result.donnees.humidite.toFixed(1),
+                            co2: result.donnees.CO2,
+                        });
+                        setAlertes(result.messages || []);
+                    }
+                }
+            } catch (error) {
+                console.error("Erreur de récupération des données live:", error);
+            }
         };
 
-        generateData();
-        const interval = setInterval(generateData, 3000);
+        const fetchViabilite = async () => {
+             try {
+                 const response = await fetch('/api/mesures/viabilite');
+                 if (response.ok) {
+                     const result = await response.json();
+                     setViabilite(result);
+                 }
+             } catch (error) {
+                 console.error("Erreur de récupération de la viabilité:", error);
+             }
+         };
+
+        fetchData();
+        fetchViabilite();
+        
+        const interval = setInterval(() => {
+            fetchData();
+            fetchViabilite();
+        }, 3000);
+        
         return () => clearInterval(interval);
     }, [roverConnected]);
 
-    // Cartes affichées
+    // Cartes affichées cohérentes avec la base de données
     const cards = [
-        { label: 'Température', value: `${data.temperature}°C`, icon: '🌡️', color: '#f97316' },
-        { label: 'Humidité', value: `${data.humidite}%`, icon: '💧', color: '#06b6d4' },
-        { label: 'Pression', value: `${data.pression} hPa`, icon: '🌪️', color: '#8b5cf6' },
-        { label: 'Luminosité', value: `${data.luminosite}%`, icon: '☀️', color: '#eab308' },
-        { label: 'Batterie', value: `${data.batterie}%`, icon: '🔋', color: '#22c55e' },
-        { label: 'Vitesse', value: `${data.vitesse} m/s`, icon: '🏎️', color: '#3b82f6' },
+        { label: 'Température', value: `${data.temperature}°C`, icon: <Thermometer size={24} />, color: '#f97316' },
+        { label: 'Humidité', value: `${data.humidite}%`, icon: <Droplets size={24} />, color: '#06b6d4' },
+        { label: 'CO2', value: `${data.co2} ppm`, icon: <Wind size={24} />, color: '#8b5cf6' },
     ];
 
     return (
@@ -52,12 +78,21 @@ const TempsReel = ({ roverConnected }) => {
 
             {!roverConnected ? (
                 <div className="temps-reel__offline">
-                    <span className="temps-reel__offline-icon">📡</span>
+                    <span className="temps-reel__offline-icon"><Radio size={48} /></span>
                     <h3>Rover déconnecté</h3>
                     <p>En attente de connexion avec le rover...</p>
                 </div>
             ) : (
-                <div className="temps-reel__grid">
+                <div className="temps-reel__grid-container">
+                    {alertes.length > 0 && (
+                        <div className="temps-reel__alerts">
+                            <AlertCircle size={20} className="temps-reel__alert-icon" />
+                            <div className="temps-reel__alert-messages">
+                                {alertes.map((msg, i) => <span key={i}>{msg}</span>)}
+                            </div>
+                        </div>
+                    )}
+                    <div className="temps-reel__grid">
                     {cards.map((card, index) => (
                         <div
                             key={card.label}
@@ -77,10 +112,53 @@ const TempsReel = ({ roverConnected }) => {
                             </div>
                         </div>
                     ))}
+                    </div>
+
+                    {/* Section Viabilité */}
+                    {viabilite && (
+                        <div className="temps-reel__viabilite">
+                            <div className="temps-reel__viabilite-header">
+                                <ShieldCheck size={28} className="temps-reel__viabilite-icon" />
+                                <h3>Score de Viabilité Globale</h3>
+                                <span className={`temps-reel__viabilite-badge viabilite-${viabilite.statut.toLowerCase()}`}>
+                                    {viabilite.statut}
+                                </span>
+                            </div>
+                            <div className="temps-reel__viabilite-content">
+                                <div className="temps-reel__viabilite-score-box">
+                                    <div className="temps-reel__viabilite-score">
+                                        <span className="temps-reel__viabilite-score-value">{viabilite.score}</span>
+                                        <span className="temps-reel__viabilite-score-max">/100</span>
+                                    </div>
+                                    <div className="temps-reel__viabilite-progress-bg">
+                                        <div 
+                                            className="temps-reel__viabilite-progress-fill" 
+                                            style={{ width: `${viabilite.score}%`, backgroundColor: getScoreColor(viabilite.score) }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="temps-reel__viabilite-details">
+                                    <p className="temps-reel__viabilite-subtitle">Moyennes récentes & Seuils :</p>
+                                    <ul className="temps-reel__viabilite-list">
+                                        <li>Température : <strong>{viabilite.moyennes.T_moy}°C</strong> <span>(Idéal : 5°C - 35°C)</span></li>
+                                        <li>Humidité : <strong>{viabilite.moyennes.H_moy}%</strong> <span>(Max : 70%)</span></li>
+                                        <li>CO2 : <strong>{viabilite.moyennes.CO2_moy} ppm</strong> <span>(Max : 1000 ppm)</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
     );
+};
+
+// Fonction utilitaire pour la couleur de la barre
+const getScoreColor = (score) => {
+    if (score > 80) return '#22c55e'; // Favorable (vert)
+    if (score >= 50) return '#eab308'; // Limite (jaune)
+    return '#ef4444'; // Inhospitalier (rouge)
 };
 
 export default TempsReel;
