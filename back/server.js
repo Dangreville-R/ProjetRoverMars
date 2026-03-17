@@ -3,7 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2/promise');
 const axios = require('axios');
-const mqtt = require('mqtt'); // Module pour le Rover
+const mqtt = require('mqtt');
+const http = require('http'); // Requis pour le WebSocket
+const WebSocket = require('ws'); // Module WebSocket
 
 const app = express();
 app.use(cors());
@@ -11,9 +13,13 @@ app.use(express.json());
 
 // Configuration Réseau
 const PORT = process.env.PORT || 3001;
-const HOST = '172.29.17.249';
+const HOST = '0.0.0.0';
 
-// Fonction de connexion BDD (Raphael étudiant 3)
+// Création du serveur HTTP pour supporter le WebSocket
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// Fonction de connexion BDD
 async function getConnection() {
     return mysql.createConnection({
         host: process.env.Serveur_BDD,
@@ -24,8 +30,16 @@ async function getConnection() {
     });
 }
 
+// ==========================================
+// WEBSOCKET : DIFFUSION TEMPS RÉEL
+// ==========================================
+wss.on('connection', (ws) => {
+    console.log("Client web connecté en WebSocket");
+});
 
-//  MQTT : RÉCEPTION NOAH
+// ==========================================
+// MQTT : RÉCEPTION NOAH
+// ==========================================
 const mqttClient = mqtt.connect('mqtt://172.29.17.249');
 
 mqttClient.on('connect', () => {
@@ -43,14 +57,22 @@ mqttClient.on('message', async (topic, message) => {
         await connection.execute(sql, [temperature, co2, humidite]);
         await connection.end();
         console.log("Données MQTT enregistrées en BDD");
+
+        // Diffusion WebSocket vers tous les clients connectés
+        wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(data));
+            }
+        });
     } catch (e) {
         console.error("Erreur MQTT :", e.message);
     }
 });
 
+// ==========================================
 // API : ROUTES HTTP
+// ==========================================
 
-// Route des Mesure Live avec logique Conditionnelle
 app.get('/api/mesures/live', async (req, res) => {
     let connection;
     try {
@@ -69,7 +91,6 @@ app.get('/api/mesures/live', async (req, res) => {
     finally { if (connection) await connection.end(); }
 });
 
-// Route Historique
 app.get('/api/mesures/history', async (req, res) => {
     let connection;
     try {
@@ -80,46 +101,29 @@ app.get('/api/mesures/history', async (req, res) => {
     finally { if (connection) await connection.end(); }
 });
 
-// Route Auth École Directe
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { identifiant, motdepasse } = req.body;
-        
         if (!identifiant || !motdepasse) {
             return res.status(400).json({ message: 'Identifiant et mot de passe obligatoires.' });
         }
-
-        // On prépare les données comme dans ton script de test qui marche
         const payload = JSON.stringify({ identifiant, motdepasse });
-        
         const response = await axios.post(
-            'https://api.ecoledirecte.com/v3/login.awp?v=4.53.0', // <-- Ajout de la version
-            `data=${encodeURIComponent(payload)}`, // <-- Encodage plus sûr
+            'https://api.ecoledirecte.com/v3/login.awp?v=4.53.0',
+            `data=${encodeURIComponent(payload)}`,
             {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' // <-- User-Agent plus "crédible"
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
                 }
             }
         );
-
         const data = response.data;
-
         if (data.code === 200 && data.token) {
-            // On récupère le premier compte trouvé (élève)
             const compte = data.data.accounts[0];
-            
-            console.log(`Connexion réussie pour ${compte.prenom} ${compte.nom}`);
-
             res.json({
                 token: data.token,
-                user: {
-                    id: compte.id,
-                    prenom: compte.prenom,
-                    nom: compte.nom,
-                    typeCompte: compte.typeCompte,
-                    email: compte.email || ''
-                }
+                user: { id: compte.id, prenom: compte.prenom, nom: compte.nom, typeCompte: compte.typeCompte, email: compte.email || '' }
             });
         } else {
             res.status(401).json({ message: data.message || 'Identifiant ou mot de passe incorrect.' });
@@ -130,4 +134,5 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-app.listen(PORT, HOST, () => console.log(`Serveur en ligne : http://${HOST}:${PORT}`));
+// Lancement du serveur via le constructeur 'server' et non 'app'
+server.listen(PORT, HOST, () => console.log(`Serveur en ligne : http://${HOST}:${PORT}`));
