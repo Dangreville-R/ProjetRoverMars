@@ -6,6 +6,8 @@ const axios = require('axios');
 const mqtt = require('mqtt');
 const http = require('http'); // Requis pour le WebSocket
 const WebSocket = require('ws'); // Module WebSocket
+const { saveMesure } = require('./ServerBDD/saveMesure');
+// const { getLastMesures } = require('./ServerBDD/getMesures');
 
 const app = express();
 app.use(cors());

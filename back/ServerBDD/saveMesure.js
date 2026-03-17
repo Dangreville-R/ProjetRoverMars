@@ -1,32 +1,24 @@
-// 1. Importer le module de connexion (ton pool créé précédemment)
+// On importe le pool depuis ton fichier database.js
 const pool = require('./database'); 
 
 /**
- * 2. Définir les paramètres de la fonction
- * @param {Object} objetJSON - Contient les données envoyées par le Rover
+ * Fonction pour sauvegarder une mesure
+ * @param {Object} data - L'objet JSON (temp, co2, humidite, rover_id)
  */
-const saveMesure = async (objetJSON) => {
-    // Extraction des données de l'objet JSON (Temp, CO2, Humidité, ID du Rover)
-    const { temperature, co2, humidite, rover_id } = objetJSON;
-
+const saveMesure = async (data) => {
     try {
-        // Requête SQL d'insertion
-        const sql = `
-            INSERT INTO mesures (temperature, CO2, humidite, date, rover_id) 
-            VALUES (?, ?, ?, NOW(), ?)
-        `;
-
-        // Exécution via le pool
-        const [result] = await pool.promise().query(sql, [temperature, co2, humidite, rover_id]);
+        const sql = `INSERT INTO mesures (temperature, CO2, humidite, date, rover_id) 
+                     VALUES (?, ?, ?, NOW(), ?)`;
         
-        console.log(`✅ Mesure enregistrée ! (ID local: ${result.insertId})`);
-        return result.insertId;
+        const values = [data.temperature, data.co2, data.humidite, data.rover_id];
 
+        // .promise() est nécessaire si tu as créé un pool standard
+        const [result] = await pool.promise().query(sql, values);
+        console.log("Insertion réussie, ID mesure :", result.insertId);
+        return result;
     } catch (err) {
-        console.error("❌ Erreur lors de l'insertion en BDD :", err.message);
-        throw err;
+        console.error("Erreur lors de l'INSERT :", err.message);
     }
 };
 
-// 3. Rendre cette fonction disponible pour les autres fichiers du projet
 module.exports = { saveMesure };
