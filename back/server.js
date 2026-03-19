@@ -176,8 +176,18 @@ function calculerViabilite(mesures, seuilsAdmin) {
 app.get('/api/mesures/history', async (req, res) => {
     let connection;
     try {
+        const { start, end } = req.query;
         connection = await getConnection();
-        const [rows] = await connection.execute("SELECT * FROM mesures ORDER BY date DESC LIMIT 100");
+        let sql = "SELECT * FROM mesures";
+        let params = [];
+        
+        if (start && end) {
+            sql += " WHERE date BETWEEN ? AND ?";
+            params = [start, end];
+        }
+        
+        sql += " ORDER BY date DESC LIMIT 100";
+        const [rows] = await connection.execute(sql, params);
         res.json(rows);
     } catch (err) { res.status(500).json({ error: err.message }); }
     finally { if (connection) await connection.end(); }
@@ -186,8 +196,20 @@ app.get('/api/mesures/history', async (req, res) => {
 app.get('/api/mesures/viabilite', async (req, res) => {
     let connection;
     try {
+        const { start, end } = req.query;
         connection = await getConnection();
-        const [rows] = await connection.execute("SELECT * FROM mesures ORDER BY date DESC LIMIT 50");
+        let sql = "SELECT * FROM mesures";
+        let params = [];
+        let limit = 50;
+
+        if (start && end) {
+            sql += " WHERE date BETWEEN ? AND ?";
+            params = [start, end];
+            limit = 500; // On prend plus de points pour la période
+        }
+        
+        sql += ` ORDER BY date DESC LIMIT ${limit}`;
+        const [rows] = await connection.execute(sql, params);
 
         // Seuils Admin par défaut
         const seuilsAdmin = {

@@ -249,3 +249,100 @@
     border-radius: var(--radius-md) !important;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
 }
+/* ===============================
+   BARRE DE RECHERCHE PAR DATE
+   =============================== */
+
+.historique__search-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--spacing-md);
+    background: rgba(15, 23, 42, 0.3);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    margin-bottom: var(--spacing-lg);
+    animation: fadeSlideDown 0.5s ease forwards;
+}
+
+@keyframes fadeSlideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.historique__input-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    flex: 1;
+    min-width: 200px;
+}
+
+.historique__input-group label {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.historique__input-group input {
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    outline: none;
+    transition: all var(--transition-fast);
+    width: 100%;
+}
+
+.historique__input-group input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.historique__search-btn {
+    padding: 10px 24px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 38px;
+    min-width: 120px;
+}
+
+.historique__search-btn:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.historique__search-btn:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+    .historique__search-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .historique__input-group {
+        width: 100%;
+    }
+    
+    .historique__search-btn {
+        width: 100%;
+        margin-top: var(--spacing-sm);
+    }
+}

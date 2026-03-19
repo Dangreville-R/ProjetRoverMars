@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import ViabiliteWidget from '../../../components/ViabiliteWidget/ViabiliteWidget';
 import './Historique.css';
 
 // Fausses données historiques si le rover est déconnecté
@@ -28,30 +29,55 @@ const Historique = ({ roverConnected }) => {
     // Nouveaux states pour les graphiques
     const [view, setView] = useState('table'); // 'table' ou 'chart'
     const [activeChart, setActiveChart] = useState('all'); // 'all', 'temperature', 'humidite', 'co2'
+    const [viabilite, setViabilite] = useState(null);
+    
+    // Nouveaux states pour le filtrage par date
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
 
-    // Récupération de l'historique
+    const fetchHistory = async (start = '', end = '') => {
+        if (!roverConnected) {
+            setHistory(MOCK_HISTORY);
+            return;
+        }
+        try {
+            let url = '/api/mesures/history';
+            if (start && end) url += `?start=${start}&end=${end}`;
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                const sortedData = data.sort((a, b) => new Date(a.date) - new Date(b.date));
+                setHistory(sortedData);
+            }
+        } catch (error) {
+            console.error("Erreur de récupération de l'historique:", error);
+        }
+    };
+
+    const fetchViabilite = async (start = '', end = '') => {
+        try {
+            let url = '/api/mesures/viabilite';
+            if (start && end) url += `?start=${start}&end=${end}`;
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                setViabilite(data);
+            }
+        } catch (error) {
+            console.error("Erreur de récupération de la viabilité:", error);
+        }
+    };
+
+    // Récupération initiale
     useEffect(() => {
-        const fetchHistory = async () => {
-            if (!roverConnected) {
-                setHistory(MOCK_HISTORY);
-                return;
-            }
-            try {
-                const response = await fetch('/api/mesures/history');
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    // On trie pour que le graphique soit chronologique (de gauche à droite)
-                    const sortedData = data.sort((a, b) => new Date(a.date) - new Date(b.date));
-                    setHistory(sortedData);
-                }
-            } catch (error) {
-                console.error("Erreur de récupération de l'historique:", error);
-            }
-        };
-
         fetchHistory();
+        fetchViabilite();
     }, [roverConnected]);
+
+    const handleSearch = () => {
+        fetchHistory(startDate, endDate);
+        fetchViabilite(startDate, endDate);
+    };
 
     // Colonnes du tableau (réelles de la BDD)
     const columns = [
@@ -100,6 +126,32 @@ const Historique = ({ roverConnected }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Formulaire de recherche par date */}
+            <div className="historique__search-bar">
+                <div className="historique__input-group">
+                    <label>Du :</label>
+                    <input 
+                        type="datetime-local" 
+                        value={startDate} 
+                        onChange={(e) => setStartDate(e.target.value)} 
+                    />
+                </div>
+                <div className="historique__input-group">
+                    <label>Au :</label>
+                    <input 
+                        type="datetime-local" 
+                        value={endDate} 
+                        onChange={(e) => setEndDate(e.target.value)} 
+                    />
+                </div>
+                <button className="historique__search-btn" onClick={handleSearch}>
+                    Rechercher
+                </button>
+            </div>
+
+            {/* Indicateur de Viabilité pour l'historique */}
+            <ViabiliteWidget viabilite={viabilite} showExplanation={true} />
 
             {view === 'table' ? (
                 /* Vue Tableau */
