@@ -24,10 +24,15 @@
     padding: var(--spacing-lg);
     margin-bottom: var(--spacing-lg);
     animation: adminFadeIn 0.4s ease forwards;
+    opacity: 0;
 }
 
 .admin__section:nth-child(3) {
     animation-delay: 0.1s;
+}
+
+.admin__section:nth-child(4) {
+    animation-delay: 0.2s;
 }
 
 @keyframes adminFadeIn {
@@ -35,7 +40,6 @@
         opacity: 0;
         transform: translateY(8px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -77,52 +81,144 @@
     font-weight: 500;
 }
 
-/* liste des parametres */
-.admin__settings {
+/* ===============================
+   FORMULAIRE DES SEUILS
+   =============================== */
+
+.admin__form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+}
+
+.admin__form-group {
     display: flex;
     flex-direction: column;
+    gap: var(--spacing-xs);
 }
 
-.admin__setting-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-md) 0;
-    border-bottom: 1px solid rgba(51, 65, 85, 0.3);
-    gap: var(--spacing-md);
+.admin__form-group--single {
+    max-width: 400px;
 }
 
-.admin__setting-row:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-.admin__setting-row:first-child {
-    padding-top: 0;
-}
-
-.admin__setting-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.admin__setting-label {
+.admin__form-label {
     font-size: var(--font-size-sm);
     color: var(--text-primary);
-    font-weight: 500;
+    font-weight: 600;
 }
 
-.admin__setting-desc {
+.admin__form-desc {
     font-size: var(--font-size-xs);
     color: var(--text-muted);
+    margin: 0;
+    line-height: 1.4;
 }
 
-.admin__setting-value {
+.admin__input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
+}
+
+.admin__input {
+    padding: 8px 12px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
     font-size: var(--font-size-sm);
-    color: var(--color-primary);
+    font-family: var(--font-family);
+    outline: none;
+    width: 120px;
+    transition: all var(--transition-fast);
+    font-variant-numeric: tabular-nums;
+}
+
+.admin__input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.admin__input:hover {
+    border-color: rgba(148, 163, 184, 0.5);
+}
+
+.admin__input-unit {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
     font-weight: 500;
-    white-space: nowrap;
+    min-width: 30px;
+}
+
+/* ===============================
+   BOUTON SAUVEGARDER
+   =============================== */
+
+.admin__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+
+.admin__save-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 10px 24px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.admin__save-btn:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.admin__save-btn:active {
+    transform: translateY(0);
+}
+
+.admin__save-btn.saving {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.admin__status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    animation: statusSlideIn 0.3s ease forwards;
+}
+
+@keyframes statusSlideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.admin__status--success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.admin__status--error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 /* note en bas */
@@ -139,12 +235,16 @@
         grid-template-columns: 1fr;
     }
 
-    .admin__setting-row {
-        flex-direction: column;
-        align-items: flex-start;
+    .admin__form-grid {
+        grid-template-columns: 1fr;
     }
 
-    .admin__setting-value {
-        align-self: flex-end;
+    .admin__actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin__save-btn {
+        justify-content: center;
     }
 }
