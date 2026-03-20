@@ -120,11 +120,24 @@ mqttClient.on('message', async (topic, message) => {
         await connection.end();
         console.log("Données MQTT enregistrées en BDD");
 
+        // vérification si les valeurs dépassent les seuils (comme l'API /live)
+        let alertes = [];
+        if (temperature > adminConfig.T_max || temperature < adminConfig.T_min) alertes.push("Température critique !");
+        if (co2 > adminConfig.CO2_max) alertes.push("CO2 élevé !");
+        if (humidite > adminConfig.H_max) alertes.push("Humidité excessive !");
+
+        // on prépare l'objet qu'on envoie aux websockets
+        const payload = {
+            donnees: { temperature, humidite, CO2: co2 },
+            messages: alertes,
+            statut: alertes.length === 0 ? "RAS" : "ALERTE"
+        };
+
         // envoie des données à tous les clients connectés en WebSocket
         // mise a jour automatique du dashboard en temps réel
         wss.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(data));
+                client.send(JSON.stringify(payload));
             }
         });
     } catch (e) {
@@ -485,3 +498,5 @@ app.post('/api/auth/login/2fa/verify', async (req, res) => {
 
 // démarrage du serveur sur le port et l'adresse configurés
 server.listen(PORT, HOST, () => console.log(`Serveur en ligne : http://${HOST}:${PORT}`));
+
+

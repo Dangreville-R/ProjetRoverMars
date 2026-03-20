@@ -16,30 +16,11 @@ const TempsReel = ({ roverConnected }) => {
     // Viabilité
     const [viabilite, setViabilite] = useState(null);
 
-    // Fetch de l'API live et Viabilité
+    // Fetch de l'API live et Viabilité via WebSocket
     useEffect(() => {
         if (!roverConnected) return;
 
-        const fetchData = async () => {
-            try {
-                // Remplacer par l'URL dynamique si nécessaire ou le proxy proxy react
-                const response = await fetch('/api/mesures/live');
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.donnees) {
-                        setData({
-                            temperature: result.donnees.temperature.toFixed(1),
-                            humidite: result.donnees.humidite.toFixed(1),
-                            co2: result.donnees.CO2,
-                        });
-                        setAlertes(result.messages || []);
-                    }
-                }
-            } catch (error) {
-                console.error("Erreur de récupération des données live:", error);
-            }
-        };
-
+        // Fonction pour récupérer la viabilité
         const fetchViabilite = async () => {
              try {
                  const response = await fetch('/api/mesures/viabilite');
@@ -52,15 +33,65 @@ const TempsReel = ({ roverConnected }) => {
              }
          };
 
-        fetchData();
+        // Fonction pour récupérer la dernière mesure avant le premier WebSocket
+        const fetchLive = async () => {
+            try {
+                const response = await fetch('/api/mesures/live');
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.donnees) {
+                        setData({
+                            temperature: Number(result.donnees.temperature).toFixed(1),
+                            humidite: Number(result.donnees.humidite).toFixed(1),
+                            co2: result.donnees.CO2,
+                        });
+                        setAlertes(result.messages || []);
+                    }
+                }
+            } catch (error) {
+                console.error("Erreur de récupération des données live:", error);
+            }
+        };
+
+        // Fetch initial au montage
         fetchViabilite();
-        
-        const interval = setInterval(() => {
-            fetchData();
-            fetchViabilite();
-        }, 3000);
-        
-        return () => clearInterval(interval);
+        fetchLive();
+
+        // Connexion WebSocket pour le flux temps réel
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.hostname}:3001`;
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            console.log("Connecté au WebSocket des mesures en temps réel");
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const result = JSON.parse(event.data);
+                if (result.donnees) {
+                    setData({
+                        temperature: Number(result.donnees.temperature).toFixed(1),
+                        humidite: Number(result.donnees.humidite).toFixed(1),
+                        co2: result.donnees.CO2,
+                    });
+                    setAlertes(result.messages || []);
+                    
+                    // Mise à jour de la viabilité à chaque nouvelle mesure
+                    fetchViabilite();
+                }
+            } catch (error) {
+                console.error("Erreur lors du traitement WS:", error);
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error("Erreur WebSocket:", error);
+        };
+
+        return () => {
+            ws.close();
+        };
     }, [roverConnected]);
 
     // Cartes affichées cohérentes avec la base de données
