@@ -31,15 +31,10 @@ const Historique = ({ roverConnected }) => {
     const [activeChart, setActiveChart] = useState('all'); // 'all', 'temperature', 'humidite', 'co2'
     const [viabilite, setViabilite] = useState(null);
     
-    // Nouveaux states pour le filtrage par date
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 
     const fetchHistory = async (start = '', end = '') => {
-        if (!roverConnected) {
-            setHistory(MOCK_HISTORY);
-            return;
-        }
         try {
             let url = '/api/mesures/history';
             if (start && end) url += `?start=${start}&end=${end}`;
@@ -48,9 +43,12 @@ const Historique = ({ roverConnected }) => {
                 const data = await response.json();
                 const sortedData = data.sort((a, b) => new Date(a.date) - new Date(b.date));
                 setHistory(sortedData);
+            } else {
+                setHistory(MOCK_HISTORY);
             }
         } catch (error) {
             console.error("Erreur de récupération de l'historique:", error);
+            setHistory(MOCK_HISTORY);
         }
     };
 
@@ -91,7 +89,7 @@ const Historique = ({ roverConnected }) => {
         <div className="historique">
             <div className="historique__header">
                 <div>
-                    <h2>Historique des mesures {roverConnected ? '' : '(Données de simulation)'}</h2>
+                    <h2>Historique des mesures {roverConnected ? '' : '(Rover hors ligne)'}</h2>
                     <p>{history.length} enregistrements</p>
                 </div>
                 
@@ -224,8 +222,8 @@ const Historique = ({ roverConnected }) => {
             {/* Message */}
             <p className="historique__note">
                 {roverConnected 
-                    ? "Les données sont synchronisées avec la Base de Données." 
-                    : "⚠️ Mode simulation (Rover déconnecté)."
+                    ? "Rover en ligne : Données synchronisées avec la Base de Données." 
+                    : "⚠️ Rover hors ligne : Affichage de l'historique sauvegardé."
                 }
             </p>
         </div>
