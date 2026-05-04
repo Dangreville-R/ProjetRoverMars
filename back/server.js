@@ -11,6 +11,8 @@ const crypto = require('crypto');
 const http = require('http');
 const WebSocket = require('ws');
 const { saveMesure } = require('./ServerBDD/saveMesure');
+const fs = require('fs');
+const mesuresService = require('./ServerBDD/mesuresService');
 
 // création de l'application Express et configuration des middlewares
 const app = express();
@@ -18,16 +20,40 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// configuration du réseau (port et adresse)
+// --- CONFIGURATION RÉSEAU ---
 const PORT = process.env.PORT || 3001;
 const HOST = '0.0.0.0';
 
-// création serveur HTTP et le serveur WebSocket2
+// --- CRÉATION DU SERVEUR UNIQUE ---
 const server = http.createServer(app);
+
+// Initialisation de Socket.io
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// --- GESTION DES CONNEXIONS ---
+io.on('connection', (socket) => {
+    console.log(`🔌 Nouveau client connecté : ${socket.id}`);
+
+    socket.on('disconnect', () => {
+        console.log(`❌ Client déconnecté : ${socket.id}`);
+    });
+});
+
+// Initialisation de WebSocket (wss) pour l'étudiant 2
 const wss = new WebSocket.Server({ server });
 
 // stockage des sessions de double authentification dans un objet
 const sessions2FA = {};
+
+// Variables globales pour la position du rover ---
+let posX = 0; 
+let posY = 0;
 
 // configuration admin modifiable (les seuils et la fréquence)
 let adminConfig = {
@@ -86,58 +112,103 @@ wss.on('connection', (ws) => {
 });
 
 // connexion au broker MQTT
-const mqttClient = mqtt.connect('mqtt://172.29.17.249');
+const mqttClient = mqtt.connect('mqtt://localhost');
 
 mqttClient.on('connect', () => {
-    console.log("Connecté au Broker MQTT");
-    mqttClient.subscribe('rover/mesures'); // Pour les capteurs
-    mqttClient.subscribe('Rover / move');   // AJOUT : Pour écouter l'App Inventor
+    console.log("✅ Broker MQTT connecté !");
+    mqttClient.subscribe('#'); 
 });
 
-// réception d'un message MQTT du rover
+// GESTION DES MESSAGES MQTT 
 mqttClient.on('message', async (topic, message) => {
-    try {
-        // conversion du message en objet JavaScript
-        const data = JSON.parse(message.toString());
-        const { temperature, humidite, co2 } = data;
+    const rawMessage = message.toString();
+    console.log(`📩 Message reçu sur ${topic} : ${rawMessage}`);
+        
+    // Cette ligne envoie la donnée à tous les navigateurs connectés
+   try {
+    const data = JSON.parse(rawMessage);
+    io.emit('mqtData', { topic, data }); // Envoie l'objet JSON directement
+    } catch (e) {
+    io.emit('mqtData', { topic, message: rawMessage }); // Envoie le texte si c'est pas du JSON
+}
+    // --- CAS 1 : COMMANDE DE MOUVEMENT (ÉTUDIANT 2) ---
+    if (topic === 'Rover/move') {
+        const commande = rawMessage;
+        
+        // Calcul des coordonnées 2D
+        if (commande === "Avance") posY++;
+        if (commande === "Recule") posY--;
+        if (commande === "Gauche") posX--;
+        if (commande === "Droite") posX++;
 
-        // 1. Enregistrement des données dans la base de données (Étudiant 3)
+        console.log(`📍 Position calculée -> X: ${posX}, Y: ${posY}`);
+
+        // Mise à jour de la BDD (Table 'rover')
+        let conn;
         try {
-            const connection = await getConnection();
-            const sql = "INSERT INTO mesures (temperature, CO2, humidite, date) VALUES (?, ?, ?, NOW())";
-            await connection.execute(sql, [temperature, co2, humidite]);
-            await connection.end();
-            console.log("Données MQTT enregistrées en BDD");
-        } catch (dbError) {
-            console.error("Erreur BDD, tentative de sauvegarde locale via saveMesure...");
-            saveMesure(data); // Utilisation de ton interface de secours
+            conn = await getConnection();
+            await conn.execute(
+                "UPDATE rover SET pos_x = ?, pos_y = ? WHERE id = 1", 
+                [posX, posY]
+            );
+            console.log("💾 Position sauvegardée en BDD");
+        } catch (err) {
+            console.error("❌ Erreur MAJ Position BDD :", err.message);
+        } finally {
+            if (conn) await conn.end();
         }
 
-        // 2. TÂCHE : Structuration du JSON pour le Front-End (Étudiant 2)
-        const payload = {
-            donnees: {
-                temperature: Number(temperature),
-                co2: Number(co2),
-                humidite: Number(humidite),
-                date: new Date().toISOString()
-            },
-            statut: (temperature > adminConfig.T_max || temperature < adminConfig.T_min || co2 > adminConfig.CO2_max || humidite > adminConfig.H_max) 
-                    ? "ALERTE" 
-                    : "RAS",
-            timestamp: new Date().toLocaleTimeString()
-        };
-
-        // 3. TÂCHE : Envoi des données structurées en temps réel via WebSocket
+        // Diffusion de la position via WebSocket
         wss.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(payload));
+                client.send(JSON.stringify({ type: "POSITION", x: posX, y: posY }));
             }
         });
-        
-        console.log(`Diffusion Temps Réel effectuée. Statut: ${payload.statut}`);
+    }
 
-    } catch (e) {
-        console.error("Erreur traitement message MQTT :", e.message);
+    // --- CAS 2 : DONNÉES CAPTEURS (ÉTUDIANT 3) ---
+    // On suppose que le rover envoie ses capteurs sur un autre topic ou via un JSON spécifique
+    // Si tes capteurs arrivent aussi sur 'Rover / move' sous forme de JSON, ce bloc s'exécute :
+    if (rawMessage.includes('{')) { 
+        try {
+            const data = JSON.parse(rawMessage);
+            const { temperature, humidite, co2 } = data;
+
+            let conn;
+            try {
+                conn = await getConnection();
+                const sql = "INSERT INTO mesures (temperature, CO2, humidite, date) VALUES (?, ?, ?, NOW())";
+                await conn.execute(sql, [temperature, co2, humidite]);
+                console.log("Données MQTT enregistrées en BDD");
+            } catch (dbError) {
+                console.error("Erreur BDD, sauvegarde locale...");
+                saveMesure(data);
+            } finally {
+                if (conn) await conn.end();
+            }
+
+            // Structuration pour le Front
+            const payload = {
+                donnees: {
+                    temperature: Number(temperature),
+                    co2: Number(co2),
+                    humidite: Number(humidite),
+                    date: new Date().toISOString()
+                },
+                statut: (temperature > adminConfig.T_max || temperature < adminConfig.T_min || co2 > adminConfig.CO2_max || humidite > adminConfig.H_max) 
+                        ? "ALERTE" : "RAS",
+                position: { x: posX, y: posY }, // On inclut la position actuelle
+                timestamp: new Date().toLocaleTimeString()
+            };
+
+            wss.clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify(payload));
+                }
+            });
+        } catch (e) {
+            // Si ce n'est pas un JSON, on ignore l'erreur de parsing (c'est probablement une commande texte)
+        }
     }
 });
 
@@ -156,7 +227,7 @@ app.get('/api/mesures/live', async (req, res) => {
             if (m.CO2 > adminConfig.CO2_max) alertes.push("CO2 élevé !");
             if (m.humidite > adminConfig.H_max) alertes.push("Humidité excessive !");
 
-            res.json({ donnees: m, messages: alertes, statut: alertes.length === 0 ? "RAS" : "ALERTE" });
+            res.json({ donnees: m, messages: alertes, statut: alertes.length === 0 ? "RAS" : "ALERTE", position: {x: posX, y: posY} });
         } else {
             res.status(404).json({ message: "Vide" });
         }
@@ -205,19 +276,20 @@ function calculerViabilite(mesures, seuilsAdmin) {
 app.get('/api/mesures/history', async (req, res) => {
     let connection;
     try {
-        const { start, end } = req.query;
         connection = await getConnection();
-        let sql = "SELECT * FROM mesures";
-        let params = [];
-        if (start && end) {
-            sql += " WHERE date BETWEEN ? AND ?";
-            params = [start, end];
-        }
-        sql += " ORDER BY date DESC LIMIT 100";
-        const [rows] = await connection.execute(sql, params);
+        let sql = "SELECT * FROM mesures ORDER BY date DESC LIMIT 100";
+        const [rows] = await connection.execute(sql);
         res.json(rows);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        // Logique Conditionel : Si BDD en panne = fichier de secours (local)
+        console.error("Échec BDD, lecture du fichier de secours...");
+        
+        if (fs.existsSync('./ServerBDD/mesures.json')) { // Adapte le chemin vers ton fichier
+            const localData = JSON.parse(fs.readFileSync('./ServerBDD/mesures.json', 'utf8'));
+            res.json(localData); 
+        } else {
+            res.status(500).json({ error: "BDD et Fichier local indisponibles" });
+        }
     } finally {
         if (connection) await connection.end();
     }
