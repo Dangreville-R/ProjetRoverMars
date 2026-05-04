@@ -1,5 +1,5 @@
 require('dotenv').config();
-const mysql = require('mysql2'); // On utilise la version standard pour correspondre à tes étapes
+const mysql = require('mysql2/promise'); // On utilise la version standard pour correspondre à tes étapes
 
 // 1. Créer le pool de connexion
 const pool = mysql.createPool({

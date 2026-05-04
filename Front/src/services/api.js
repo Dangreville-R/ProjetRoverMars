@@ -78,3 +78,14 @@ export const roverAPI = {
 };
 
 export default request;
+
+
+export const fetchLastMesure = async () => {
+  const response = await fetch('http://172.29.17.249:3000/api/mesures/latest');
+  
+  if (!response.ok) {
+    throw new Error(`Erreur HTTP : ${response.status}`);
+  }
+
+  return await response.json();
+};

@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const http = require('http');
 const WebSocket = require('ws');
 const { saveMesure } = require('./ServerBDD/saveMesure');
+const getLastMesure = require('./ServerBDD/getLastMesure');
 
 // création de l'application Express et configuration des middlewares
 const app = express();
@@ -260,6 +261,20 @@ app.post('/api/admin/config', (req, res) => {
     if (frequence !== undefined) adminConfig.frequence = Number(frequence);
     console.log('Config admin mise à jour :', adminConfig);
     res.json({ message: 'Configuration sauvegardée.', config: adminConfig });
+});
+
+// ─── Route : dernière mesure ───────────────────────────────────────────────────
+app.get('/api/mesures/latest', async (req, res) => {
+  try {
+    // Fenêtre paramétrable via ?secondes=60 (défaut : 60)
+    const secondes = parseInt(req.query.secondes) || 60;
+    const mesures = await getLastMesure(secondes);
+ 
+    res.json(mesures); // [] si aucune mesure sur la fenêtre
+  } catch (err) {
+    console.error('[GET /api/mesures/latest] Erreur :', err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
 });
 
 // --- ROUTES ECOLE DIRECTE ---

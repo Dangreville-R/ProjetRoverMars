@@ -2,41 +2,35 @@ import React, { useState, useEffect } from 'react';
 import { Thermometer, Droplets, Wind, AlertCircle, Radio } from 'lucide-react';
 import ViabiliteWidget from '../../../components/ViabiliteWidget/ViabiliteWidget';
 import './TempsReel.css';
-
-// Page Temps Réel
+ 
 const TempsReel = ({ roverConnected }) => {
-    // Données réelles
     const [data, setData] = useState({
         temperature: '--',
         humidite: '--',
         co2: '--',
     });
     const [alertes, setAlertes] = useState([]);
-    
-    // Viabilité
     const [viabilite, setViabilite] = useState(null);
-
-    // Fetch de l'API live et Viabilité via WebSocket
+ 
     useEffect(() => {
         if (!roverConnected) return;
-
-        // Fonction pour récupérer la viabilité
+ 
         const fetchViabilite = async () => {
-             try {
-                 const response = await fetch('/api/mesures/viabilite');
-                 if (response.ok) {
-                     const result = await response.json();
-                     setViabilite(result);
-                 }
-             } catch (error) {
-                 console.error("Erreur de récupération de la viabilité:", error);
-             }
-         };
-
-        // Fonction pour récupérer la dernière mesure avant le premier WebSocket
-        const fetchLive = async () => {
             try {
-                const response = await fetch('/api/mesures/live');
+                const response = await fetch('/api/mesures/viabilite');
+                if (response.ok) {
+                    const result = await response.json();
+                    setViabilite(result);
+                }
+            } catch (error) {
+                console.error("Erreur de récupération de la viabilité:", error);
+            }
+        };
+ 
+        // ✅ Remplace /api/mesures/live par /api/mesures/latest
+        const fetchLatest = async () => {
+            try {
+                const response = await fetch('/api/mesures/latest');
                 if (response.ok) {
                     const result = await response.json();
                     if (result.donnees) {
@@ -49,23 +43,23 @@ const TempsReel = ({ roverConnected }) => {
                     }
                 }
             } catch (error) {
-                console.error("Erreur de récupération des données live:", error);
+                console.error("Erreur de récupération des données latest:", error);
             }
         };
-
+ 
         // Fetch initial au montage
         fetchViabilite();
-        fetchLive();
-
+        fetchLatest();
+ 
         // Connexion WebSocket pour le flux temps réel
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.hostname}:3001`;
         const ws = new WebSocket(wsUrl);
-
+ 
         ws.onopen = () => {
             console.log("Connecté au WebSocket des mesures en temps réel");
         };
-
+ 
         ws.onmessage = (event) => {
             try {
                 const result = JSON.parse(event.data);
@@ -76,7 +70,7 @@ const TempsReel = ({ roverConnected }) => {
                         co2: result.donnees.CO2,
                     });
                     setAlertes(result.messages || []);
-                    
+ 
                     // Mise à jour de la viabilité à chaque nouvelle mesure
                     fetchViabilite();
                 }
@@ -84,30 +78,29 @@ const TempsReel = ({ roverConnected }) => {
                 console.error("Erreur lors du traitement WS:", error);
             }
         };
-
+ 
         ws.onerror = (error) => {
             console.error("Erreur WebSocket:", error);
         };
-
+ 
         return () => {
             ws.close();
         };
     }, [roverConnected]);
-
-    // Cartes affichées cohérentes avec la base de données
+ 
     const cards = [
         { label: 'Température', value: `${data.temperature}°C`, icon: <Thermometer size={24} />, color: '#f97316' },
         { label: 'Humidité', value: `${data.humidite}%`, icon: <Droplets size={24} />, color: '#06b6d4' },
         { label: 'CO2', value: `${data.co2} ppm`, icon: <Wind size={24} />, color: '#8b5cf6' },
     ];
-
+ 
     return (
         <div className="temps-reel">
             <div className="temps-reel__header">
                 <h2>Données en temps réel</h2>
                 <p>Mise à jour automatique toutes les 3 secondes</p>
             </div>
-
+ 
             {!roverConnected ? (
                 <div className="temps-reel__offline">
                     <span className="temps-reel__offline-icon"><Radio size={48} /></span>
@@ -125,33 +118,32 @@ const TempsReel = ({ roverConnected }) => {
                         </div>
                     )}
                     <div className="temps-reel__grid">
-                    {cards.map((card, index) => (
-                        <div
-                            key={card.label}
-                            className="temps-reel__card"
-                            style={{
-                                '--card-color': card.color,
-                                animationDelay: `${index * 0.08}s`,
-                            }}
-                        >
-                            <div className="temps-reel__card-header">
-                                <span className="temps-reel__card-icon">{card.icon}</span>
-                                <span className="temps-reel__card-label">{card.label}</span>
+                        {cards.map((card, index) => (
+                            <div
+                                key={card.label}
+                                className="temps-reel__card"
+                                style={{
+                                    '--card-color': card.color,
+                                    animationDelay: `${index * 0.08}s`,
+                                }}
+                            >
+                                <div className="temps-reel__card-header">
+                                    <span className="temps-reel__card-icon">{card.icon}</span>
+                                    <span className="temps-reel__card-label">{card.label}</span>
+                                </div>
+                                <div className="temps-reel__card-value">{card.value}</div>
+                                <div className="temps-reel__card-bar">
+                                    <div className="temps-reel__card-bar-fill" />
+                                </div>
                             </div>
-                            <div className="temps-reel__card-value">{card.value}</div>
-                            <div className="temps-reel__card-bar">
-                                <div className="temps-reel__card-bar-fill" />
-                            </div>
-                        </div>
-                    ))}
+                        ))}
                     </div>
-
-                    {/* Section Viabilité */}
+ 
                     <ViabiliteWidget viabilite={viabilite} />
                 </div>
             )}
         </div>
     );
 };
-
+ 
 export default TempsReel;
