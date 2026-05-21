@@ -4,16 +4,15 @@ const db = require('./database');
  
 /**
  * Récupère toutes les mesures des 60 dernières secondes.
- * @returns {Promise<Array>} [ { temperature, humidite, CO2, created_at }, ... ]
+ * @returns {Promise<Array>} [ { temperature, humidite, CO2, date }, ... ]
  */
 const getLastMesure = (secondes = 60) => {
   return new Promise((resolve, reject) => {
-    // ⚠️ Adapte "mesures" et "created_at" selon ton vrai schéma
     const query = `
-      SELECT temperature, humidite, CO2, created_at
+      SELECT temperature, humidite, CO2, date, id_rover
       FROM mesures
-      WHERE created_at >= NOW() - INTERVAL ? SECOND
-      ORDER BY created_at ASC
+      WHERE date >= NOW() - INTERVAL ? SECOND AND id_rover = ?
+      ORDER BY date ASC
     `;
  
     db.query(query, [secondes], (err, results) => {
