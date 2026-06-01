@@ -4,367 +4,291 @@ require('dotenv').config();
 // importation des modules nécessaires
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2/promise');
-const axios = require('axios');
-const mqtt = require('mqtt');
-const crypto = require('crypto');
 const http = require('http');
 const WebSocket = require('ws');
-const { saveMesure } = require('./ServerBDD/saveMesure');
-const getLastMesure = require('./ServerBDD/getLastMesure');
 
-// création de l'application Express et configuration des middlewares
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// importation des classes du projet
+const database = require('./ServerBDD/database');
+const MesureRepository = require('./ServerBDD/MesureRepository');
+const AdminConfig = require('./AdminConfig');
+const EcoleDirecteAuthService = require('./EcoleDirecteAuthService');
+const MqttHandler = require('./MqttHandler');
 
-// configuration du réseau (port et adresse)
-const PORT = process.env.PORT || 3001;
-const HOST = '0.0.0.0';
+/**
+ * Classe RoverServer — Point d'entrée principal de l'application.
+ * Orchestre Express, HTTP, WebSocket, MQTT, les routes API et les services.
+ */
+class RoverServer {
+    constructor() {
+        // création de l'application Express et du serveur HTTP/WebSocket
+        this._app = express();
+        this._server = http.createServer(this._app);
+        this._wss = new WebSocket.Server({ server: this._server });
 
-// création serveur HTTP et le serveur WebSocket2
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+        // instanciation des services
+        this._database = database;
+        this._mesureRepository = new MesureRepository(this._database);
+        this._adminConfig = new AdminConfig();
+        this._authService = new EcoleDirecteAuthService();
+        this._mqttHandler = new MqttHandler(
+            'mqtt://172.29.17.249',
+            this._wss,
+            this._adminConfig,
+            this._mesureRepository,
+            this._database
+        );
 
-// stockage des sessions de double authentification dans un objet
-const sessions2FA = {};
+        // configuration du réseau (port et adresse)
+        this._port = process.env.PORT || 3001;
+        this._host = '0.0.0.0';
 
-// configuration admin modifiable (les seuils et la fréquence)
-let adminConfig = {
-    T_min: 5,
-    T_max: 35,
-    CO2_max: 1000,
-    H_max: 70,
-    frequence: 3
-};
+        // initialisation
+        this._setupMiddlewares();
+        this._setupWebSocket();
+        this._setupRoutes();
+        this._mqttHandler.connect();
+    }
 
-// récupération du token GTK depuis l'API école directe
-async function fetchGTKToken() {
-    const response = await axios.get('https://api.ecoledirecte.com/v3/login.awp?gtk=1&v=4.96.3', {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-        }
-    });
+    /**
+     * Configure les middlewares Express (CORS, JSON, URL-encoded).
+     */
+    _setupMiddlewares() {
+        this._app.use(cors());
+        this._app.use(express.json());
+        this._app.use(express.urlencoded({ extended: true }));
+    }
 
-    const setCookie = response.headers['set-cookie'];
-    if (!setCookie) throw new Error('Impossible de récupérer le token GTK.');
+    /**
+     * Configure le serveur WebSocket.
+     */
+    _setupWebSocket() {
+        // quand un client se connecte en WebSocket
+        this._wss.on('connection', (ws) => {
+            console.log("Client web connecté en WebSocket");
+        });
+    }
 
-    const allCookies = Array.isArray(setCookie) ? setCookie.join('; ') : setCookie;
-    const match = allCookies.match(/GTK=([^;]+)/);
-    if (!match) throw new Error('Token GTK introuvable dans les cookies.');
+    /**
+     * Configure toutes les routes API de l'application.
+     */
+    _setupRoutes() {
+        this._setupMesureRoutes();
+        this._setupAdminRoutes();
+        this._setupAuthRoutes();
+    }
 
-    const gtkValue = match[1];
-    const cookieHeader = setCookie.map(c => c.split(';')[0]).join('; ');
-    return { gtkHeader: gtkValue, gtkCookie: cookieHeader };
-}
+    // ─── Routes Mesures ──────────────────────────────────────────────
 
-async function ecoleDirecteRequest(path, payload = {}, extraHeaders = {}) {
-    const body = new URLSearchParams({ data: JSON.stringify(payload) }).toString();
-    const response = await axios.post(`https://api.ecoledirecte.com/v3${path}`, body, {
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-            ...extraHeaders
-        }
-    });
-    return response;
-}
+    /**
+     * Configure les routes liées aux mesures (live, history, viabilite, latest).
+     */
+    _setupMesureRoutes() {
+        // route : données live (dernière mesure en BDD)
+        this._app.get('/api/mesures/live', async (req, res) => {
+            let connection;
+            try {
+                connection = await this._database.getConnection();
+                const [rows] = await connection.execute("SELECT * FROM mesures ORDER BY date DESC LIMIT 1");
 
-async function getConnection() {
-    return mysql.createConnection({
-        host: process.env.Serveur_BDD,
-        user: process.env.User_BDD,
-        password: process.env.Mot_De_Passe_BDD,
-        database: process.env.Nom_BDD,
-        connectTimeout: 10000
-    });
-}
+                if (rows.length > 0) {
+                    const m = rows[0];
+                    const config = this._adminConfig.get();
+                    let alertes = [];
+                    if (m.temperature > config.T_max || m.temperature < config.T_min) alertes.push("Température critique !");
+                    if (m.CO2 > config.CO2_max) alertes.push("CO2 élevé !");
+                    if (m.humidite > config.H_max) alertes.push("Humidité excessive !");
 
-// quand un client se connecte en WebSocket
-wss.on('connection', (ws) => {
-    console.log("Client web connecté en WebSocket");
-});
-
-// connexion au broker MQTT
-const mqttClient = mqtt.connect('mqtt://172.29.17.249');
-
-mqttClient.on('connect', () => {
-    console.log("Connecté au Broker MQTT");
-    mqttClient.subscribe('rover/mesures'); // Pour les capteurs
-    mqttClient.subscribe('Rover / move');   // AJOUT : Pour écouter l'App Inventor
-});
-
-// réception d'un message MQTT du rover
-mqttClient.on('message', async (topic, message) => {
-    try {
-        // conversion du message en objet JavaScript
-        const data = JSON.parse(message.toString());
-        const { temperature, humidite, co2 } = data;
-
-        // 1. Enregistrement des données dans la base de données (Étudiant 3)
-        try {
-            const connection = await getConnection();
-            const sql = "INSERT INTO mesures (temperature, CO2, humidite, date) VALUES (?, ?, ?, NOW())";
-            await connection.execute(sql, [temperature, co2, humidite]);
-            await connection.end();
-            console.log("Données MQTT enregistrées en BDD");
-        } catch (dbError) {
-            console.error("Erreur BDD, tentative de sauvegarde locale via saveMesure...");
-            saveMesure(data); // Utilisation de ton interface de secours
-        }
-
-        // 2. TÂCHE : Structuration du JSON pour le Front-End (Étudiant 2)
-        const payload = {
-            donnees: {
-                temperature: Number(temperature),
-                co2: Number(co2),
-                humidite: Number(humidite),
-                date: new Date().toISOString()
-            },
-            statut: (temperature > adminConfig.T_max || temperature < adminConfig.T_min || co2 > adminConfig.CO2_max || humidite > adminConfig.H_max) 
-                    ? "ALERTE" 
-                    : "RAS",
-            timestamp: new Date().toLocaleTimeString()
-        };
-
-        // 3. TÂCHE : Envoi des données structurées en temps réel via WebSocket
-        wss.clients.forEach(client => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(payload));
+                    res.json({ donnees: m, messages: alertes, statut: alertes.length === 0 ? "RAS" : "ALERTE" });
+                } else {
+                    res.status(404).json({ message: "Vide" });
+                }
+            } catch (err) {
+                res.status(500).json({ error: err.message });
+            } finally {
+                if (connection) await connection.end();
             }
         });
-        
-        console.log(`Diffusion Temps Réel effectuée. Statut: ${payload.statut}`);
 
-    } catch (e) {
-        console.error("Erreur traitement message MQTT :", e.message);
+        // route : historique des mesures
+        this._app.get('/api/mesures/history', async (req, res) => {
+            let connection;
+            try {
+                const { start, end } = req.query;
+                connection = await this._database.getConnection();
+                let sql = "SELECT * FROM mesures";
+                let params = [];
+                if (start && end) {
+                    sql += " WHERE date BETWEEN ? AND ?";
+                    params = [start, end];
+                }
+                sql += " ORDER BY date DESC LIMIT 100";
+                const [rows] = await connection.execute(sql, params);
+                res.json(rows);
+            } catch (err) {
+                res.status(500).json({ error: err.message });
+            } finally {
+                if (connection) await connection.end();
+            }
+        });
+
+        // route : calcul de viabilité
+        this._app.get('/api/mesures/viabilite', async (req, res) => {
+            let connection;
+            try {
+                const { start, end } = req.query;
+                connection = await this._database.getConnection();
+                let sql = "SELECT * FROM mesures";
+                let params = [];
+                let limit = 50;
+                if (start && end) {
+                    sql += " WHERE date BETWEEN ? AND ?";
+                    params = [start, end];
+                    limit = 500;
+                }
+                sql += ` ORDER BY date DESC LIMIT ${limit}`;
+                const [rows] = await connection.execute(sql, params);
+                const result = this._calculerViabilite(rows, this._adminConfig.get());
+                res.json(result);
+            } catch (err) {
+                res.status(500).json({ error: err.message });
+            } finally {
+                if (connection) await connection.end();
+            }
+        });
+
+        // route : dernières mesures (fenêtre paramétrable via ?secondes=60)
+        this._app.get('/api/mesures/latest', async (req, res) => {
+            try {
+                // fenêtre paramétrable via ?secondes=60 (défaut : 60)
+                const secondes = parseInt(req.query.secondes) || 60;
+                const mesures = await this._mesureRepository.getLastMesures(secondes);
+
+                res.json(mesures); // [] si aucune mesure sur la fenêtre
+            } catch (err) {
+                console.error('[GET /api/mesures/latest] Erreur :', err);
+                res.status(500).json({ message: 'Erreur serveur.' });
+            }
+        });
     }
-});
 
-// --- ROUTES API ---
+    // ─── Routes Admin ────────────────────────────────────────────────
 
-app.get('/api/mesures/live', async (req, res) => {
-    let connection;
-    try {
-        connection = await getConnection();
-        const [rows] = await connection.execute("SELECT * FROM mesures ORDER BY date DESC LIMIT 1");
+    /**
+     * Configure les routes de configuration administrateur.
+     */
+    _setupAdminRoutes() {
+        // route : récupérer la configuration actuelle
+        this._app.get('/api/admin/config', (req, res) => {
+            res.json(this._adminConfig.get());
+        });
 
-        if (rows.length > 0) {
-            const m = rows[0];
-            let alertes = [];
-            if (m.temperature > adminConfig.T_max || m.temperature < adminConfig.T_min) alertes.push("Température critique !");
-            if (m.CO2 > adminConfig.CO2_max) alertes.push("CO2 élevé !");
-            if (m.humidite > adminConfig.H_max) alertes.push("Humidité excessive !");
+        // route : mettre à jour la configuration
+        this._app.post('/api/admin/config', (req, res) => {
+            this._adminConfig.update(req.body);
+            res.json({ message: 'Configuration sauvegardée.', config: this._adminConfig.get() });
+        });
+    }
 
-            res.json({ donnees: m, messages: alertes, statut: alertes.length === 0 ? "RAS" : "ALERTE" });
-        } else {
-            res.status(404).json({ message: "Vide" });
+    // ─── Routes École Directe ────────────────────────────────────────
+
+    /**
+     * Configure les routes d'authentification École Directe.
+     */
+    _setupAuthRoutes() {
+        // route : login École Directe
+        this._app.post('/api/auth/login', async (req, res) => {
+            try {
+                const { identifiant, motdepasse } = req.body;
+                if (!identifiant || !motdepasse) {
+                    return res.status(400).json({ message: 'Identifiant et mot de passe obligatoires.' });
+                }
+
+                const result = await this._authService.login(identifiant, motdepasse);
+
+                if (result.success) {
+                    return res.json({ token: result.token, user: result.user });
+                } else if (result.twoFactorRequired) {
+                    return res.json({ twoFactorRequired: true, question: result.question, propositions: result.propositions, sessionId: result.sessionId });
+                } else {
+                    return res.status(401).json({ message: result.message });
+                }
+            } catch (error) {
+                console.error('Erreur login École Directe:', error.message);
+                return res.status(500).json({ message: 'Impossible de contacter École Directe.' });
+            }
+        });
+
+        // route : vérification 2FA
+        this._app.post('/api/auth/login/2fa/verify', async (req, res) => {
+            try {
+                const { sessionId, answer } = req.body;
+                if (!sessionId || !answer) return res.status(400).json({ message: 'Session et réponse obligatoires.' });
+
+                const result = await this._authService.verify2FA(sessionId, answer);
+
+                if (result.success) {
+                    return res.json({ token: result.token, user: result.user });
+                } else {
+                    return res.status(result.status).json({ message: result.message });
+                }
+            } catch (error) {
+                return res.status(500).json({ message: 'Erreur technique 2FA.' });
+            }
+        });
+    }
+
+    // ─── Logique Métier ──────────────────────────────────────────────
+
+    /**
+     * Calcule le score de viabilité à partir d'un ensemble de mesures et des seuils admin.
+     * @param {Array} mesures - Tableau de mesures { temperature, CO2, humidite }
+     * @param {Object} seuilsAdmin - Seuils { T_min, T_max, CO2_max, H_max }
+     * @returns {Object} { score, statut, moyennes: { T_moy, CO2_moy, H_moy } }
+     */
+    _calculerViabilite(mesures, seuilsAdmin) {
+        if (!mesures || mesures.length === 0) {
+            return { score: 0, statut: "Inconnu", moyennes: { T_moy: 0, CO2_moy: 0, H_moy: 0 } };
         }
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    } finally {
-        if (connection) await connection.end();
+        const { T_min, T_max, CO2_max, H_max } = seuilsAdmin;
+        let sumT = 0, sumCO2 = 0, sumH = 0;
+        mesures.forEach(m => {
+            sumT += Number(m.temperature);
+            sumCO2 += Number(m.CO2);
+            sumH += Number(m.humidite);
+        });
+        const total = mesures.length;
+        const T_moy = sumT / total;
+        const CO2_moy = sumCO2 / total;
+        const H_moy = sumH / total;
+        let score = 100;
+        if (T_moy < T_min) score -= (T_min - T_moy) * 5;
+        else if (T_moy > T_max) score -= (T_moy - T_max) * 5;
+        if (CO2_moy > CO2_max) score -= ((CO2_moy - CO2_max) / 50);
+        if (H_moy > H_max) score -= (H_moy - H_max) * 2;
+        score = Math.max(0, Math.min(100, Math.round(score)));
+        let statut = "Favorable";
+        if (score < 50) statut = "Inhospitalier";
+        else if (score <= 80) statut = "Limite";
+        return {
+            score,
+            statut,
+            moyennes: {
+                T_moy: Number(T_moy.toFixed(2)),
+                CO2_moy: Number(CO2_moy.toFixed(2)),
+                H_moy: Number(H_moy.toFixed(2))
+            }
+        };
     }
-});
 
-function calculerViabilite(mesures, seuilsAdmin) {
-    if (!mesures || mesures.length === 0) {
-        return { score: 0, statut: "Inconnu", moyennes: { T_moy: 0, CO2_moy: 0, H_moy: 0 } };
+    /**
+     * Démarre le serveur HTTP sur le port et l'adresse configurés.
+     */
+    start() {
+        this._server.listen(this._port, this._host, () => {
+            console.log(`Serveur en ligne : http://${this._host}:${this._port}`);
+        });
     }
-    const { T_min, T_max, CO2_max, H_max } = seuilsAdmin;
-    let sumT = 0, sumCO2 = 0, sumH = 0;
-    mesures.forEach(m => {
-        sumT += Number(m.temperature);
-        sumCO2 += Number(m.CO2);
-        sumH += Number(m.humidite);
-    });
-    const total = mesures.length;
-    const T_moy = sumT / total;
-    const CO2_moy = sumCO2 / total;
-    const H_moy = sumH / total;
-    let score = 100;
-    if (T_moy < T_min) score -= (T_min - T_moy) * 5;
-    else if (T_moy > T_max) score -= (T_moy - T_max) * 5;
-    if (CO2_moy > CO2_max) score -= ((CO2_moy - CO2_max) / 50);
-    if (H_moy > H_max) score -= (H_moy - H_max) * 2;
-    score = Math.max(0, Math.min(100, Math.round(score)));
-    let statut = "Favorable";
-    if (score < 50) statut = "Inhospitalier";
-    else if (score <= 80) statut = "Limite";
-    return {
-        score,
-        statut,
-        moyennes: {
-            T_moy: Number(T_moy.toFixed(2)),
-            CO2_moy: Number(CO2_moy.toFixed(2)),
-            H_moy: Number(H_moy.toFixed(2))
-        }
-    };
 }
 
-app.get('/api/mesures/history', async (req, res) => {
-    let connection;
-    try {
-        const { start, end } = req.query;
-        connection = await getConnection();
-        let sql = "SELECT * FROM mesures";
-        let params = [];
-        if (start && end) {
-            sql += " WHERE date BETWEEN ? AND ?";
-            params = [start, end];
-        }
-        sql += " ORDER BY date DESC LIMIT 100";
-        const [rows] = await connection.execute(sql, params);
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
-
-app.get('/api/mesures/viabilite', async (req, res) => {
-    let connection;
-    try {
-        const { start, end } = req.query;
-        connection = await getConnection();
-        let sql = "SELECT * FROM mesures";
-        let params = [];
-        let limit = 50;
-        if (start && end) {
-            sql += " WHERE date BETWEEN ? AND ?";
-            params = [start, end];
-            limit = 500;
-        }
-        sql += ` ORDER BY date DESC LIMIT ${limit}`;
-        const [rows] = await connection.execute(sql, params);
-        const result = calculerViabilite(rows, adminConfig);
-        res.json(result);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
-
-app.get('/api/admin/config', (req, res) => {
-    res.json(adminConfig);
-});
-
-app.post('/api/admin/config', (req, res) => {
-    const { T_min, T_max, CO2_max, H_max, frequence } = req.body;
-    if (T_min !== undefined) adminConfig.T_min = Number(T_min);
-    if (T_max !== undefined) adminConfig.T_max = Number(T_max);
-    if (CO2_max !== undefined) adminConfig.CO2_max = Number(CO2_max);
-    if (H_max !== undefined) adminConfig.H_max = Number(H_max);
-    if (frequence !== undefined) adminConfig.frequence = Number(frequence);
-    console.log('Config admin mise à jour :', adminConfig);
-    res.json({ message: 'Configuration sauvegardée.', config: adminConfig });
-});
-
-// ─── Route : dernière mesure ───────────────────────────────────────────────────
-app.get('/api/mesures/latest', async (req, res) => {
-  try {
-    // Fenêtre paramétrable via ?secondes=60 (défaut : 60)
-    const secondes = parseInt(req.query.secondes) || 60;
-    const mesures = await getLastMesure(secondes);
- 
-    res.json(mesures); // [] si aucune mesure sur la fenêtre
-  } catch (err) {
-    console.error('[GET /api/mesures/latest] Erreur :', err);
-    res.status(500).json({ message: 'Erreur serveur.' });
-  }
-});
-
-// --- ROUTES ECOLE DIRECTE ---
-
-app.post('/api/auth/login', async (req, res) => {
-    try {
-        const { identifiant, motdepasse } = req.body;
-        if (!identifiant || !motdepasse) {
-            return res.status(400).json({ message: 'Identifiant et mot de passe obligatoires.' });
-        }
-        const gtk = await fetchGTKToken();
-        const response = await ecoleDirecteRequest('/login.awp?v=4.96.3', {
-            identifiant,
-            motdepasse,
-            acceptationCharte: true
-        }, {
-            'X-Gtk': gtk.gtkHeader,
-            'Cookie': gtk.gtkCookie
-        });
-
-        const data = response.data;
-        const token1 = data.token;
-        const twofa1 = response.headers['2fa-token'] || token1;
-
-        if (data.code === 200 && token1) {
-            const compte = data.data.accounts[0];
-            return res.json({
-                token: token1,
-                user: { id: compte.id, prenom: compte.prenom, nom: compte.nom, typeCompte: compte.typeCompte, email: compte.email || '' }
-            });
-        } else if (data.code === 250) {
-            const questionRes = await ecoleDirecteRequest('/connexion/doubleauth.awp?verbe=get&v=4.96.3', {}, {
-                'X-Token': token1,
-                '2fa-Token': twofa1,
-                'X-Gtk': gtk.gtkHeader,
-                'Cookie': gtk.gtkCookie
-            });
-            const qData = questionRes.data.data || {};
-            const rawQuestion = qData.question || '';
-            const rawPropositions = qData.propositions || [];
-            const question = rawQuestion ? Buffer.from(rawQuestion, 'base64').toString('utf8') : 'Vérification de sécurité';
-            const propositions = rawPropositions.map(p => Buffer.from(p, 'base64').toString('utf8'));
-            const sessionId = crypto.randomUUID();
-            const token2 = questionRes.data.token || token1;
-            const twofa2 = questionRes.headers['2fa-token'] || twofa1;
-            sessions2FA[sessionId] = { identifiant, motdepasse, gtk, token: token2, twoFAToken: twofa2, rawPropositions, createdAt: Date.now() };
-            setTimeout(() => { delete sessions2FA[sessionId]; }, 5 * 60 * 1000);
-            return res.json({ twoFactorRequired: true, question, propositions, sessionId });
-        } else {
-            return res.status(401).json({ message: data.message || 'Identifiant ou mot de passe incorrect.' });
-        }
-    } catch (error) {
-        console.error('Erreur login École Directe:', error.message);
-        return res.status(500).json({ message: 'Impossible de contacter École Directe.' });
-    }
-});
-
-app.post('/api/auth/login/2fa/verify', async (req, res) => {
-    try {
-        const { sessionId, answer } = req.body;
-        if (!sessionId || !answer) return res.status(400).json({ message: 'Session et réponse obligatoires.' });
-        const session = sessions2FA[sessionId];
-        if (!session) return res.status(401).json({ message: 'Session expirée ou invalide.' });
-
-        const { identifiant, motdepasse, gtk, token, twoFAToken, rawPropositions } = session;
-        const rawAnswer = rawPropositions.find(p => Buffer.from(p, 'base64').toString('utf8') === answer);
-        if (!rawAnswer) return res.status(400).json({ message: 'Réponse invalide.' });
-
-        const ansRes = await ecoleDirecteRequest('/connexion/doubleauth.awp?verbe=post&v=4.96.3', { choix: rawAnswer }, {
-            'X-Token': token, '2fa-Token': twoFAToken, 'X-Gtk': gtk.gtkHeader, 'Cookie': gtk.gtkCookie
-        });
-
-        if (ansRes.data.code !== 200) return res.status(401).json({ message: 'Réponse 2FA incorrecte.' });
-
-        const cn = ansRes.data.data?.cn || '';
-        const cv = ansRes.data.data?.cv || '';
-        const loginRes = await ecoleDirecteRequest('/login.awp?v=4.96.3', { identifiant, motdepasse, acceptationCharte: true, cn, cv }, {
-            'X-Token': ansRes.data.token || token, '2fa-Token': ansRes.headers['2fa-token'] || twoFAToken, 'X-Gtk': gtk.gtkHeader, 'Cookie': gtk.gtkCookie
-        });
-
-        if (loginRes.data.code === 200 && loginRes.data.token) {
-            delete sessions2FA[sessionId];
-            const compte = loginRes.data.data.accounts[0];
-            return res.json({ token: loginRes.data.token, user: { id: compte.id, prenom: compte.prenom, nom: compte.nom, typeCompte: compte.typeCompte } });
-        }
-        return res.status(401).json({ message: 'Échec final 2FA.' });
-    } catch (error) {
-        return res.status(500).json({ message: 'Erreur technique 2FA.' });
-    }
-});
-
 // démarrage du serveur
-server.listen(PORT, HOST, () => console.log(`Serveur en ligne : http://${HOST}:${PORT}`));
+new RoverServer().start();

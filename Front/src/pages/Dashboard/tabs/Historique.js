@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import ViabiliteWidget from '../../../components/ViabiliteWidget/ViabiliteWidget';
 import './Historique.css';
@@ -21,20 +21,46 @@ const formatTime = (dateStr) => {
     return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 };
 
-// Page Historique
-const Historique = ({ roverConnected }) => {
-    const [history, setHistory] = useState([]);
-    const [filter, setFilter] = useState('all');
-    
-    // Nouveaux states pour les graphiques
-    const [view, setView] = useState('table'); // 'table' ou 'chart'
-    const [activeChart, setActiveChart] = useState('all'); // 'all', 'temperature', 'humidite', 'co2'
-    const [viabilite, setViabilite] = useState(null);
-    
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
+/**
+ * Classe Historique — Page d'historique des mesures.
+ * Gère l'affichage en tableau et graphique, la recherche par date et le widget viabilité.
+ */
+class Historique extends React.Component {
+    constructor(props) {
+        super(props);
 
-    const fetchHistory = async (start = '', end = '') => {
+        this.state = {
+            history: [],
+            filter: 'all',
+            view: 'table', // 'table' ou 'chart'
+            activeChart: 'all', // 'all', 'temperature', 'humidite', 'co2'
+            viabilite: null,
+            startDate: '',
+            endDate: '',
+        };
+
+        this.handleSearch = this.handleSearch.bind(this);
+    }
+
+    // Récupération initiale
+    componentDidMount() {
+        this._fetchHistory();
+        this._fetchViabilite();
+    }
+
+    componentDidUpdate(prevProps) {
+        if (prevProps.roverConnected !== this.props.roverConnected) {
+            this._fetchHistory();
+            this._fetchViabilite();
+        }
+    }
+
+    /**
+     * Récupère l'historique des mesures depuis l'API.
+     * @param {string} start - Date de début (optionnel)
+     * @param {string} end - Date de fin (optionnel)
+     */
+    async _fetchHistory(start = '', end = '') {
         try {
             let url = '/api/mesures/history';
             if (start && end) url += `?start=${start}&end=${end}`;
@@ -42,192 +68,197 @@ const Historique = ({ roverConnected }) => {
             if (response.ok) {
                 const data = await response.json();
                 const sortedData = data.sort((a, b) => new Date(a.date) - new Date(b.date));
-                setHistory(sortedData);
+                this.setState({ history: sortedData });
             } else {
-                setHistory(MOCK_HISTORY);
+                this.setState({ history: MOCK_HISTORY });
             }
         } catch (error) {
             console.error("Erreur de récupération de l'historique:", error);
-            setHistory(MOCK_HISTORY);
+            this.setState({ history: MOCK_HISTORY });
         }
-    };
+    }
 
-    const fetchViabilite = async (start = '', end = '') => {
+    /**
+     * Récupère le score de viabilité depuis l'API.
+     * @param {string} start - Date de début (optionnel)
+     * @param {string} end - Date de fin (optionnel)
+     */
+    async _fetchViabilite(start = '', end = '') {
         try {
             let url = '/api/mesures/viabilite';
             if (start && end) url += `?start=${start}&end=${end}`;
             const response = await fetch(url);
             if (response.ok) {
                 const data = await response.json();
-                setViabilite(data);
+                this.setState({ viabilite: data });
             }
         } catch (error) {
             console.error("Erreur de récupération de la viabilité:", error);
         }
-    };
+    }
 
-    // Récupération initiale
-    useEffect(() => {
-        fetchHistory();
-        fetchViabilite();
-    }, [roverConnected]);
+    handleSearch() {
+        const { startDate, endDate } = this.state;
+        this._fetchHistory(startDate, endDate);
+        this._fetchViabilite(startDate, endDate);
+    }
 
-    const handleSearch = () => {
-        fetchHistory(startDate, endDate);
-        fetchViabilite(startDate, endDate);
-    };
+    render() {
+        const { roverConnected } = this.props;
+        const { history, filter, view, activeChart, viabilite, startDate, endDate } = this.state;
 
-    // Colonnes du tableau (réelles de la BDD)
-    const columns = [
-        { key: 'date', label: 'Date & Heure' },
-        { key: 'temperature', label: 'Temp. (°C)' },
-        { key: 'humidite', label: 'Humid. (%)' },
-        { key: 'co2', label: 'CO2 (ppm)' },
-    ];
+        // Colonnes du tableau (réelles de la BDD)
+        const columns = [
+            { key: 'date', label: 'Date & Heure' },
+            { key: 'temperature', label: 'Temp. (°C)' },
+            { key: 'humidite', label: 'Humid. (%)' },
+            { key: 'co2', label: 'CO2 (ppm)' },
+        ];
 
-    return (
-        <div className="historique">
-            <div className="historique__header">
-                <div>
-                    <h2>Historique des mesures {roverConnected ? '' : '(Rover hors ligne)'}</h2>
-                    <p>{history.length} enregistrements</p>
-                </div>
-                
-                <div className="historique__controls">
-                    {/* Switcher Tableau / Graphique */}
-                    <div className="historique__view-toggle">
-                        <button 
-                            className={`historique__toggle-btn ${view === 'table' ? 'active' : ''}`}
-                            onClick={() => setView('table')}
-                        >
-                            Tableau
-                        </button>
-                        <button 
-                            className={`historique__toggle-btn ${view === 'chart' ? 'active' : ''}`}
-                            onClick={() => setView('chart')}
-                        >
-                            Graphique
-                        </button>
-                    </div>
-
-                    <div className="historique__filters">
-                        <select
-                            className="historique__select"
-                            value={filter}
-                            onChange={(e) => setFilter(e.target.value)}
-                        >
-                            <option value="all">Toutes les données</option>
-                            <option value="today">Aujourd'hui</option>
-                            <option value="week">Cette semaine</option>
-                            <option value="month">Ce mois</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            {/* Formulaire de recherche par date */}
-            <div className="historique__search-bar">
-                <div className="historique__input-group">
-                    <label>Du :</label>
-                    <input 
-                        type="datetime-local" 
-                        value={startDate} 
-                        onChange={(e) => setStartDate(e.target.value)} 
-                    />
-                </div>
-                <div className="historique__input-group">
-                    <label>Au :</label>
-                    <input 
-                        type="datetime-local" 
-                        value={endDate} 
-                        onChange={(e) => setEndDate(e.target.value)} 
-                    />
-                </div>
-                <button className="historique__search-btn" onClick={handleSearch}>
-                    Rechercher
-                </button>
-            </div>
-
-            {/* Indicateur de Viabilité pour l'historique */}
-            <ViabiliteWidget viabilite={viabilite} showExplanation={true} />
-
-            {view === 'table' ? (
-                /* Vue Tableau */
-                <div className="historique__table-wrapper">
-                <table className="historique__table">
-                    <thead>
-                        <tr>
-                            {columns.map((col) => (
-                                <th key={col.key}>{col.label}</th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {history.map((row, index) => (
-                            <tr
-                                key={row.id_mesure || row.id || index}
-                                style={{ animationDelay: `${index * 0.05}s` }}
-                            >
-                                <td className="historique__date">{new Date(row.date).toLocaleString('fr-FR')}</td>
-                                <td>{row.temperature}°C</td>
-                                <td>{row.humidite}%</td>
-                                <td>{row.CO2} ppm</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            ) : (
-                /* Vue Graphique */
-                <div className="historique__chart-container">
-                    <div className="historique__chart-controls">
-                        <button className={activeChart === 'all' ? 'active' : ''} onClick={() => setActiveChart('all')}>Tous</button>
-                        <button className={activeChart === 'temperature' ? 'active' : ''} onClick={() => setActiveChart('temperature')}>Température</button>
-                        <button className={activeChart === 'humidite' ? 'active' : ''} onClick={() => setActiveChart('humidite')}>Humidité</button>
-                        <button className={activeChart === 'co2' ? 'active' : ''} onClick={() => setActiveChart('co2')}>CO2</button>
+        return (
+            <div className="historique">
+                <div className="historique__header">
+                    <div>
+                        <h2>Historique des mesures {roverConnected ? '' : '(Rover hors ligne)'}</h2>
+                        <p>{history.length} enregistrements</p>
                     </div>
                     
-                    <div className="historique__chart-wrapper">
-                        <ResponsiveContainer width="100%" height={400}>
-                            <LineChart data={history} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
-                                <XAxis 
-                                    dataKey="date" 
-                                    tickFormatter={formatTime} 
-                                    stroke="var(--text-muted)" 
-                                    tick={{fontSize: 12}}
-                                />
-                                <YAxis stroke="var(--text-muted)" tick={{fontSize: 12}} />
-                                <Tooltip 
-                                    labelFormatter={(label) => new Date(label).toLocaleString('fr-FR')}
-                                    contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                                />
-                                <Legend />
-                                
-                                {(activeChart === 'all' || activeChart === 'temperature') && (
-                                    <Line type="monotone" dataKey="temperature" name="Température (°C)" stroke="#f97316" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
-                                )}
-                                {(activeChart === 'all' || activeChart === 'humidite') && (
-                                    <Line type="monotone" dataKey="humidite" name="Humidité (%)" stroke="#06b6d4" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
-                                )}
-                                {(activeChart === 'all' || activeChart === 'co2') && (
-                                    <Line type="monotone" dataKey="CO2" name="CO2 (ppm)" stroke="#8b5cf6" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
-                                )}
-                            </LineChart>
-                        </ResponsiveContainer>
+                    <div className="historique__controls">
+                        {/* Switcher Tableau / Graphique */}
+                        <div className="historique__view-toggle">
+                            <button 
+                                className={`historique__toggle-btn ${view === 'table' ? 'active' : ''}`}
+                                onClick={() => this.setState({ view: 'table' })}
+                            >
+                                Tableau
+                            </button>
+                            <button 
+                                className={`historique__toggle-btn ${view === 'chart' ? 'active' : ''}`}
+                                onClick={() => this.setState({ view: 'chart' })}
+                            >
+                                Graphique
+                            </button>
+                        </div>
+
+                        <div className="historique__filters">
+                            <select
+                                className="historique__select"
+                                value={filter}
+                                onChange={(e) => this.setState({ filter: e.target.value })}
+                            >
+                                <option value="all">Toutes les données</option>
+                                <option value="today">Aujourd'hui</option>
+                                <option value="week">Cette semaine</option>
+                                <option value="month">Ce mois</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-            )}
 
-            {/* Message */}
-            <p className="historique__note">
-                {roverConnected 
-                    ? "Rover en ligne : Données synchronisées avec la Base de Données." 
-                    : "⚠️ Rover hors ligne : Affichage de l'historique sauvegardé."
-                }
-            </p>
-        </div>
-    );
-};
+                {/* Formulaire de recherche par date */}
+                <div className="historique__search-bar">
+                    <div className="historique__input-group">
+                        <label>Du :</label>
+                        <input 
+                            type="datetime-local" 
+                            value={startDate} 
+                            onChange={(e) => this.setState({ startDate: e.target.value })} 
+                        />
+                    </div>
+                    <div className="historique__input-group">
+                        <label>Au :</label>
+                        <input 
+                            type="datetime-local" 
+                            value={endDate} 
+                            onChange={(e) => this.setState({ endDate: e.target.value })} 
+                        />
+                    </div>
+                    <button className="historique__search-btn" onClick={this.handleSearch}>
+                        Rechercher
+                    </button>
+                </div>
+
+                {/* Indicateur de Viabilité pour l'historique */}
+                <ViabiliteWidget viabilite={viabilite} showExplanation={true} />
+
+                {view === 'table' ? (
+                    /* Vue Tableau */
+                    <div className="historique__table-wrapper">
+                    <table className="historique__table">
+                        <thead>
+                            <tr>
+                                {columns.map((col) => (
+                                    <th key={col.key}>{col.label}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {history.map((row, index) => (
+                                <tr
+                                    key={row.id_mesure || row.id || index}
+                                    style={{ animationDelay: `${index * 0.05}s` }}
+                                >
+                                    <td className="historique__date">{new Date(row.date).toLocaleString('fr-FR')}</td>
+                                    <td>{row.temperature}°C</td>
+                                    <td>{row.humidite}%</td>
+                                    <td>{row.CO2} ppm</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                ) : (
+                    /* Vue Graphique */
+                    <div className="historique__chart-container">
+                        <div className="historique__chart-controls">
+                            <button className={activeChart === 'all' ? 'active' : ''} onClick={() => this.setState({ activeChart: 'all' })}>Tous</button>
+                            <button className={activeChart === 'temperature' ? 'active' : ''} onClick={() => this.setState({ activeChart: 'temperature' })}>Température</button>
+                            <button className={activeChart === 'humidite' ? 'active' : ''} onClick={() => this.setState({ activeChart: 'humidite' })}>Humidité</button>
+                            <button className={activeChart === 'co2' ? 'active' : ''} onClick={() => this.setState({ activeChart: 'co2' })}>CO2</button>
+                        </div>
+                        
+                        <div className="historique__chart-wrapper">
+                            <ResponsiveContainer width="100%" height={400}>
+                                <LineChart data={history} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+                                    <XAxis 
+                                        dataKey="date" 
+                                        tickFormatter={formatTime} 
+                                        stroke="var(--text-muted)" 
+                                        tick={{fontSize: 12}}
+                                    />
+                                    <YAxis stroke="var(--text-muted)" tick={{fontSize: 12}} />
+                                    <Tooltip 
+                                        labelFormatter={(label) => new Date(label).toLocaleString('fr-FR')}
+                                        contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                                    />
+                                    <Legend />
+                                    
+                                    {(activeChart === 'all' || activeChart === 'temperature') && (
+                                        <Line type="monotone" dataKey="temperature" name="Température (°C)" stroke="#f97316" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
+                                    )}
+                                    {(activeChart === 'all' || activeChart === 'humidite') && (
+                                        <Line type="monotone" dataKey="humidite" name="Humidité (%)" stroke="#06b6d4" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
+                                    )}
+                                    {(activeChart === 'all' || activeChart === 'co2') && (
+                                        <Line type="monotone" dataKey="CO2" name="CO2 (ppm)" stroke="#8b5cf6" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
+                                    )}
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+
+                {/* Message */}
+                <p className="historique__note">
+                    {roverConnected 
+                        ? "Rover en ligne : Données synchronisées avec la Base de Données." 
+                        : "⚠️ Rover hors ligne : Affichage de l'historique sauvegardé."
+                    }
+                </p>
+            </div>
+        );
+    }
+}
 
 export default Historique;
