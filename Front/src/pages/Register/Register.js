@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { Button, Input } from '../../components';
 import { authAPI } from '../../services/api';
 import { isValidEmail, isValidPassword } from '../../utils/helpers';
+import { withRouter } from '../../utils/withRouter';
 import './Register.css';
 
 // Génère des étoiles pour le fond
@@ -24,26 +25,47 @@ const generateStars = (count) => {
 // Crée les étoiles une fois
 const stars = generateStars(50);
 
-// Page d'inscription
-const Register = () => {
-    const navigate = useNavigate();
+/**
+ * Classe Register — Page d'inscription.
+ * Gère le formulaire d'inscription avec validation et indicateur de force du mot de passe.
+ */
+class Register extends React.Component {
+    constructor(props) {
+        super(props);
 
-    const [formData, setFormData] = useState({
-        username: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-    });
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+        this.state = {
+            formData: {
+                username: '',
+                email: '',
+                password: '',
+                confirmPassword: '',
+            },
+            error: '',
+            loading: false,
+        };
 
-    const handleChange = (field) => (e) => {
-        setFormData((prev) => ({ ...prev, [field]: e.target.value }));
-    };
+        this.handleSubmit = this.handleSubmit.bind(this);
+    }
 
-    // Calcule la force du mot de passe
-    const passwordStrength = useMemo(() => {
-        const pwd = formData.password;
+    /**
+     * Met à jour un champ du formulaire.
+     * @param {string} field - Le nom du champ
+     * @returns {Function} Le handler onChange
+     */
+    handleChange(field) {
+        return (e) => {
+            this.setState((prev) => ({
+                formData: { ...prev.formData, [field]: e.target.value },
+            }));
+        };
+    }
+
+    /**
+     * Calcule la force du mot de passe (remplace useMemo).
+     * @returns {Object} { level, text }
+     */
+    _getPasswordStrength() {
+        const pwd = this.state.formData.password;
         if (!pwd) return { level: 0, text: '' };
 
         let score = 0;
@@ -59,33 +81,46 @@ const Register = () => {
         ];
 
         return levels[score] || levels[0];
-    }, [formData.password]);
+    }
 
-    const handleSubmit = async (e) => {
+    /**
+     * Retourne la classe CSS pour la barre de force du mot de passe.
+     * @param {Object} passwordStrength
+     * @returns {string}
+     */
+    _getStrengthClass(passwordStrength) {
+        if (passwordStrength.level >= 3) return 'register-password-strength--strong';
+        if (passwordStrength.level >= 2) return 'register-password-strength--medium';
+        return '';
+    }
+
+    async handleSubmit(e) {
         e.preventDefault();
-        setError('');
+        this.setState({ error: '' });
+
+        const { formData } = this.state;
 
         if (formData.username.trim().length < 3) {
-            setError("Le nom d'utilisateur doit contenir au moins 3 caractères.");
+            this.setState({ error: "Le nom d'utilisateur doit contenir au moins 3 caractères." });
             return;
         }
 
         if (!isValidEmail(formData.email)) {
-            setError('Veuillez entrer un email valide.');
+            this.setState({ error: 'Veuillez entrer un email valide.' });
             return;
         }
 
         if (!isValidPassword(formData.password)) {
-            setError('Le mot de passe doit contenir au moins 6 caractères.');
+            this.setState({ error: 'Le mot de passe doit contenir au moins 6 caractères.' });
             return;
         }
 
         if (formData.password !== formData.confirmPassword) {
-            setError('Les mots de passe ne correspondent pas.');
+            this.setState({ error: 'Les mots de passe ne correspondent pas.' });
             return;
         }
 
-        setLoading(true);
+        this.setState({ loading: true });
 
         try {
             await authAPI.register({
@@ -93,129 +128,128 @@ const Register = () => {
                 email: formData.email,
                 password: formData.password,
             });
-            navigate('/login');
+            this.props.navigate('/login');
         } catch (err) {
-            setError(err.message || "Erreur lors de l'inscription.");
+            this.setState({ error: err.message || "Erreur lors de l'inscription." });
         } finally {
-            setLoading(false);
+            this.setState({ loading: false });
         }
-    };
+    }
 
-    const getStrengthClass = () => {
-        if (passwordStrength.level >= 3) return 'register-password-strength--strong';
-        if (passwordStrength.level >= 2) return 'register-password-strength--medium';
-        return '';
-    };
+    render() {
+        const { formData, error, loading } = this.state;
+        const passwordStrength = this._getPasswordStrength();
 
-    return (
-        <div className="register-page">
-            {/* Étoiles animées en fond */}
-            <div className="register-stars">
-                {stars.map((star) => (
-                    <div
-                        key={star.id}
-                        className={`register-star ${star.isLarge ? 'register-star--large' : ''}`}
-                        style={{
-                            left: `${star.left}%`,
-                            top: `${star.top}%`,
-                            '--star-duration': `${star.duration}s`,
-                            '--star-delay': `${star.delay}s`,
-                        }}
-                    />
-                ))}
-            </div>
-
-            <div className="register-card">
-                {/* En-tête */}
-                <div className="register-header">
-                    <h1>Inscription</h1>
-                    <p>Créez votre compte pour piloter le rover</p>
+        return (
+            <div className="register-page">
+                {/* Étoiles animées en fond */}
+                <div className="register-stars">
+                    {stars.map((star) => (
+                        <div
+                            key={star.id}
+                            className={`register-star ${star.isLarge ? 'register-star--large' : ''}`}
+                            style={{
+                                left: `${star.left}%`,
+                                top: `${star.top}%`,
+                                '--star-duration': `${star.duration}s`,
+                                '--star-delay': `${star.delay}s`,
+                            }}
+                        />
+                    ))}
                 </div>
 
-                {/* Message d'erreur */}
-                {error && <div className="register-error">{error}</div>}
-
-                {/* Formulaire d'inscription */}
-                <form onSubmit={handleSubmit} className="register-form">
-                    <Input
-                        label="Nom d'utilisateur"
-                        type="text"
-                        id="register-username"
-                        placeholder="commandant_mars"
-                        value={formData.username}
-                        onChange={handleChange('username')}
-                        required
-                    />
-
-                    <Input
-                        label="Email"
-                        type="email"
-                        id="register-email"
-                        placeholder="pilote@nasa.gov"
-                        value={formData.email}
-                        onChange={handleChange('email')}
-                        required
-                    />
-
-                    <div>
-                        <Input
-                            label="Mot de passe"
-                            type="password"
-                            id="register-password"
-                            placeholder="••••••••"
-                            value={formData.password}
-                            onChange={handleChange('password')}
-                            required
-                        />
-                        {/* Barre de force du mot de passe */}
-                        {formData.password && (
-                            <div className={`register-password-strength ${getStrengthClass()}`}>
-                                <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
-                                    {[1, 2, 3].map((bar) => (
-                                        <div
-                                            key={bar}
-                                            className={`register-password-strength__bar ${bar <= passwordStrength.level
-                                                ? 'register-password-strength__bar--active'
-                                                : ''
-                                                }`}
-                                        />
-                                    ))}
-                                </div>
-                                <span className="register-password-strength__text">
-                                    {passwordStrength.text}
-                                </span>
-                            </div>
-                        )}
+                <div className="register-card">
+                    {/* En-tête */}
+                    <div className="register-header">
+                        <h1>Inscription</h1>
+                        <p>Créez votre compte pour piloter le rover</p>
                     </div>
 
-                    <Input
-                        label="Confirmer le mot de passe"
-                        type="password"
-                        id="register-confirm-password"
-                        placeholder="••••••••"
-                        value={formData.confirmPassword}
-                        onChange={handleChange('confirmPassword')}
-                        required
-                    />
+                    {/* Message d'erreur */}
+                    {error && <div className="register-error">{error}</div>}
 
-                    <Button
-                        type="submit"
-                        variant="primary"
-                        fullWidth
-                        loading={loading}
-                    >
-                        Créer mon compte
-                    </Button>
-                </form>
+                    {/* Formulaire d'inscription */}
+                    <form onSubmit={this.handleSubmit} className="register-form">
+                        <Input
+                            label="Nom d'utilisateur"
+                            type="text"
+                            id="register-username"
+                            placeholder="commandant_mars"
+                            value={formData.username}
+                            onChange={this.handleChange('username')}
+                            required
+                        />
 
-                {/* Lien de connexion */}
-                <p className="register-footer">
-                    Déjà un compte ?{' '}
-                    <Link to="/login">Se connecter</Link>
-                </p>
+                        <Input
+                            label="Email"
+                            type="email"
+                            id="register-email"
+                            placeholder="pilote@nasa.gov"
+                            value={formData.email}
+                            onChange={this.handleChange('email')}
+                            required
+                        />
+
+                        <div>
+                            <Input
+                                label="Mot de passe"
+                                type="password"
+                                id="register-password"
+                                placeholder="••••••••"
+                                value={formData.password}
+                                onChange={this.handleChange('password')}
+                                required
+                            />
+                            {/* Barre de force du mot de passe */}
+                            {formData.password && (
+                                <div className={`register-password-strength ${this._getStrengthClass(passwordStrength)}`}>
+                                    <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
+                                        {[1, 2, 3].map((bar) => (
+                                            <div
+                                                key={bar}
+                                                className={`register-password-strength__bar ${bar <= passwordStrength.level
+                                                    ? 'register-password-strength__bar--active'
+                                                    : ''
+                                                    }`}
+                                            />
+                                        ))}
+                                    </div>
+                                    <span className="register-password-strength__text">
+                                        {passwordStrength.text}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        <Input
+                            label="Confirmer le mot de passe"
+                            type="password"
+                            id="register-confirm-password"
+                            placeholder="••••••••"
+                            value={formData.confirmPassword}
+                            onChange={this.handleChange('confirmPassword')}
+                            required
+                        />
+
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            fullWidth
+                            loading={loading}
+                        >
+                            Créer mon compte
+                        </Button>
+                    </form>
+
+                    {/* Lien de connexion */}
+                    <p className="register-footer">
+                        Déjà un compte ?{' '}
+                        <Link to="/login">Se connecter</Link>
+                    </p>
+                </div>
             </div>
-        </div>
-    );
-};
+        );
+    }
+}
 
-export default Register;
+export default withRouter(Register);

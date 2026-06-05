@@ -1,24 +1,36 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext } from 'react';
 
 // Contexte d'authentification global
 export const AuthContext = createContext(null);
 
-// Wrappe l'application pour fournir les infos de connexion
-export const AuthProvider = ({ children }) => {
-    // Infos de l'utilisateur
-    const [user, setUser] = useState(null);
-    // État de chargement
-    const [loading, setLoading] = useState(true);
+/**
+ * Classe AuthProvider — Wrappe l'application pour fournir les infos de connexion.
+ * Gère le state utilisateur, le chargement et les fonctions login/logout.
+ */
+export class AuthProvider extends React.Component {
+    constructor(props) {
+        super(props);
+
+        // Infos de l'utilisateur et état de chargement
+        this.state = {
+            user: null,
+            loading: true,
+        };
+
+        // Lie les méthodes au contexte de la classe
+        this.login = this.login.bind(this);
+        this.logout = this.logout.bind(this);
+    }
 
     // Vérifie le token au chargement
-    useEffect(() => {
+    componentDidMount() {
         const token = localStorage.getItem('token');
         const savedUser = localStorage.getItem('user');
 
         // Charge l'utilisateur si token présent
         if (token && savedUser) {
             try {
-                setUser(JSON.parse(savedUser));
+                this.setState({ user: JSON.parse(savedUser) });
             } catch (error) {
                 // Nettoie tout si erreur
                 localStorage.removeItem('token');
@@ -27,36 +39,44 @@ export const AuthProvider = ({ children }) => {
         }
 
         // Fin du chargement
-        setLoading(false);
-    }, []);
+        this.setState({ loading: false });
+    }
 
-    // Connecte l'utilisateur et sauvegarde le token
-    const login = (userData, token) => {
+    /**
+     * Connecte l'utilisateur et sauvegarde le token.
+     * @param {Object} userData - Les données de l'utilisateur
+     * @param {string} token - Le token d'authentification
+     */
+    login(userData, token) {
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(userData));
-        setUser(userData);
-    };
+        this.setState({ user: userData });
+    }
 
-    // Déconnecte l'utilisateur et vide le localStorage
-    const logout = () => {
+    /**
+     * Déconnecte l'utilisateur et vide le localStorage.
+     */
+    logout() {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        setUser(null);
-    };
+        this.setState({ user: null });
+    }
 
-    // Valeurs partagées
-    const value = {
-        user,
-        loading,
-        login,
-        logout,
-        isAuthenticated: !!user, // Vrai si connecté
-    };
+    render() {
+        // Valeurs partagées
+        const value = {
+            user: this.state.user,
+            loading: this.state.loading,
+            login: this.login,
+            logout: this.logout,
+            isAuthenticated: !!this.state.user, // Vrai si connecté
+        };
 
-    // Retourne le Provider
-    return (
-        <AuthContext.Provider value={value}>
-            {children}
-        </AuthContext.Provider>
-    );
-};
+        // Retourne le Provider
+        return (
+            <AuthContext.Provider value={value}>
+                {this.props.children}
+            </AuthContext.Provider>
+        );
+    }
+}
