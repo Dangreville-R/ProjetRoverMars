@@ -33,6 +33,17 @@ class MarsRoverServer {
             frequence: 3
         };
 
+        //  Suivi de la position et odométrie en temps continu
+        this.roverPosition = {
+            x: 0.0,       // Position X en mètres
+            y: 0.0,       // Position Y en mètres
+            angle: 0.0    // Orientation en degrés (0 = Nord)
+        };
+        this.roverVitesse = 0.2;       // Vitesse estimée du Rover en mètres par seconde (ex: 20 cm/s)
+        this.roverVitesseAngulaire = 45; // Vitesse de rotation estimée en degrés par seconde
+        this.currentMovement = null;   // Stocke le mouvement en cours ('avance', 'recule', 'gauche', 'droite')
+        this.movementStartTime = null; // Heure de début du mouvement (timestamp)
+
         // 3. Lancement automatique de la configuration
         this.configureMiddleware();
         this.configureRoutes();
@@ -104,17 +115,41 @@ class MarsRoverServer {
             this.mqttClient.subscribe('Rover/move');
         });
 
-        // Routine principale de réception MQTT liée à l'instance courante via Arrow Function
-        this.mqttClient.on('message', async (topic, message) => {
-            await this.handleMqttMessage(topic, message);
+        // Correction : Ajout d'un catch global pour sécuriser l'événement MQTT
+        this.mqttClient.on('message', (topic, message) => {
+            this.handleMqttMessage(topic, message).catch(err => {
+                console.error("Erreur critique dans handleMqttMessage:", err);
+            });
         });
     }
 
     async handleMqttMessage(topic, message) {
         try {
-            // Interception des commandes de pilotage
+            // Interception des commandes de pilotage (Gestion TouchDown / TouchUp)
             if (topic === 'Rover/move') {
-                console.log(`Commande de déplacement App Inventor reçue : ${message.toString()}`);
+                const commandeBrute = message.toString().trim().toLowerCase();
+                console.log(`Commande de déplacement reçue : "${commandeBrute}"`);
+                
+                const maintenant = Date.now();
+
+                if (commandeBrute === 'stop') {
+                    // Si on reçoit "Stop", on calcule la distance parcourue depuis le début de l'appui
+                    if (this.currentMovement && this.movementStartTime) {
+                        const dureeSecondes = (maintenant - this.movementStartTime) / 1000; // Conversion ms en secondes
+                        console.log(`[Calcul] Le mouvement "${this.currentMovement}" a duré ${dureeSecondes.toFixed(2)} secondes.`);
+                        
+                        // On applique le calcul de position basé sur le temps réel
+                        this.actualiserPositionEnContinu(this.currentMovement, dureeSecondes);
+                        
+                        // Réinitialisation du mouvement
+                        this.currentMovement = null;
+                        this.movementStartTime = null;
+                    }
+                } else {
+                    // C'est un ordre de mouvement ("avance", "recule", "gauche", "droite")
+                    this.currentMovement = commandeBrute;
+                    this.movementStartTime = maintenant;
+                }
                 return;
             }
 
@@ -148,7 +183,7 @@ class MarsRoverServer {
                     timestamp: new Date().toLocaleTimeString()
                 };
 
-                // Diffusion instantanée
+                // Diffusion instantanée (Sécurisée avec vérification client.readyState)
                 this.wss.clients.forEach(client => {
                     if (client.readyState === WebSocket.OPEN) {
                         client.send(JSON.stringify(payload));
@@ -198,6 +233,51 @@ class MarsRoverServer {
                 H_moy: Number(H_moy.toFixed(2))
             }
         };
+    }
+
+    actualiserPositionEnContinu(mouvement, duree) {
+        const angleRad = (this.roverPosition.angle * Math.PI) / 180;
+
+        switch (mouvement) {
+            case 'avance':
+                const distanceAvance = this.roverVitesse * duree;
+                this.roverPosition.x += distanceAvance * Math.sin(angleRad);
+                this.roverPosition.y += distanceAvance * Math.cos(angleRad);
+                break;
+
+            case 'recule':
+                const distanceRecule = this.roverVitesse * duree;
+                this.roverPosition.x -= distanceRecule * Math.sin(angleRad);
+                this.roverPosition.y -= distanceRecule * Math.cos(angleRad);
+                break;
+
+            case 'gauche':
+                const angleGauche = this.roverVitesseAngulaire * duree;
+                this.roverPosition.angle = (this.roverPosition.angle - angleGauche + 360) % 360;
+                break;
+
+            case 'droite':
+                const angleDroite = this.roverVitesseAngulaire * duree;
+                this.roverPosition.angle = (this.roverPosition.angle + angleDroite) % 360;
+                break;
+        }
+
+        this.roverPosition.x = Number(this.roverPosition.x.toFixed(2));
+        this.roverPosition.y = Number(this.roverPosition.y.toFixed(2));
+        this.roverPosition.angle = Number(this.roverPosition.angle.toFixed(1));
+
+        console.log(`[Position] Nouvelle coordonnée -> X: ${this.roverPosition.x}m, Y: ${this.roverPosition.y}m, Angle: ${this.roverPosition.angle}°`);
+
+        const positionPayload = {
+            type: "POSITION_ROVER",
+            donnees: this.roverPosition
+        };
+
+        this.wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(positionPayload));
+            }
+        });
     }
 
     // --- CONFIGURATION DES ROUTES API (HTTP GET/POST) ---
@@ -302,7 +382,12 @@ class MarsRoverServer {
             }
         });
 
-        // --- CONTEXTE ÉCOLE DIRECTE (API REST EXTIERNE + 2FA) ---
+        // Route pour récupérer la position actuelle du Rover
+        this.app.get('/api/rover/position', (req, res) => {
+            res.json(this.roverPosition);
+        });
+
+        // --- CONTEXTE ÉCOLE DIRECTE (API REST EXTERNE + 2FA) ---
         this.app.post('/api/auth/login', async (req, res) => {
             try {
                 const { identifiant, motdepasse } = req.body;
@@ -385,7 +470,7 @@ class MarsRoverServer {
                 return res.status(500).json({ message: 'Erreur technique 2FA.' });
             }
         });
-    }
+    } 
 
     // Démarrage effectif du serveur HTTP
     start() {
