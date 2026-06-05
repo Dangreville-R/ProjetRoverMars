@@ -1,39 +1,29 @@
-require('dotenv').config();
-const mysql = require('mysql2/promise'); // On utilise la version standard pour correspondre à tes étapes
+// back/ServerBDD/database.js
 
-// 1. Créer le pool de connexion
+require('dotenv').config(); // Charge les variables d'environnement du fichier .env
+const mysql = require('mysql2/promise'); // Version PROMISE obligatoire pour l'IHM et async/await
+
+// 1. Création du pool de connexion asynchrone vers la machine MariaDB distante
 const pool = mysql.createPool({
-  host: process.env.Serveur_BDD,
-  user: process.env.User_BDD,
-  password: process.env.Mot_De_Passe_BDD,
-  database: process.env.Nom_BDD,
+  host: process.env.Serveur_BDD,        // Récupère la vraie IP de la machine BDD
+  user: process.env.User_BDD,           // Récupère l'utilisateur (rovermars_user)
+  password: process.env.Mot_De_Passe_BDD, // Récupère le mot de passe
+  database: process.env.Nom_BDD,         // Récupère le nom de la base de données
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
 
-// 2. Ajouter un pool.getConnection() pour vérifier la réponse
-pool.getConnection((err, connection) => {
-  if (err) {
-    console.error("Erreur de connexion à la BDD :", err.message);
-    return;
-  }
-  // 3. Afficher le message en cas de succès
-  console.log("Connecté à la BDD !");
-  
-  // Important : on libère la connexion après le test
-  connection.release();
-});
+// 2. Vérification immédiate de la connexion au démarrage du serveur (façon Promise)
+pool.getConnection()
+  .then((connection) => {
+    console.log("✅ Connecté avec succès à la base de données MariaDB distante !");
+    connection.release(); // Libère immédiatement la connexion pour ne pas bloquer le pool
+  })
+  .catch((err) => {
+    console.error("❌ Erreur critique de connexion à la BDD :", err.message);
+    console.error("Vérifie l'IP dans ton .env ou si la machine distante accepte les connexions.");
+  });
 
-// 4. Rendre le pool accessible (module.exports)
+// 3. On exporte le pool pour qu'il soit utilisé par getLastMesures.js et saveMesure.js
 module.exports = pool;
-
-/** pour utiliser le pool dans d'autres fichiers: *
- *
- *  const pool = require('./db'); // Importe le pool que l'on vient de créer
-
-async function uneFonction() {
-    const [rows] = await pool.query("SELECT * FROM mesures LIMIT 5");
-    console.log(rows);
-}
- */

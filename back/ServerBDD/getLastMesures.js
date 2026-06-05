@@ -1,31 +1,39 @@
-// back/ServerBDD/getLastMesure.js
- 
+// back/ServerBDD/getLastMesures.js
+
+// On importe la connexion à la base de données configurée avec process.env
 const db = require('./database');
- 
+
 /**
- * Récupère toutes les mesures des 60 dernières secondes.
- * @returns {Promise<Array>} [ { temperature, humidite, CO2, created_at }, ... ]
+ * Récupérer les mesures en temps réel pour l'IHM
+ * Récupère toutes les mesures des X dernières secondes pour un Rover donné.
+ * @param {number} secondes - Fenêtre de temps glissante (par défaut 60s)
+ * @param {number} idRover - Identifiant du rover (par défaut 1)
+ * @returns {Promise<Array>} Tableau d'objets [ { temperature, humidite, CO2, date }, ... ]
  */
-const getLastMesure = (secondes = 60) => {
+const getLastMesure = (secondes = 60, idRover = 1) => {
   return new Promise((resolve, reject) => {
-    // ⚠️ Adapte "mesures" et "created_at" selon ton vrai schéma
+    
+    // Requête SQL triée par date ascendante pour l'affichage chronologique des graphiques du Front-End
+    // On filtre avec INTERVAL pour ne prendre que les données fraîches de la dernière minute
     const query = `
-      SELECT temperature, humidite, CO2, created_at
+      SELECT temperature, humidite, CO2, date
       FROM mesures
-      WHERE created_at >= NOW() - INTERVAL ? SECOND
-      ORDER BY created_at ASC
+      WHERE date >= NOW() - INTERVAL ? SECOND
+      ORDER BY date ASC
     `;
- 
+
+    // Exécution de la requête sur le pool de connexion MariaDB
     db.query(query, [secondes], (err, results) => {
       if (err) {
-        console.error('[getLastMesure] Erreur SQL :', err);
+        console.error('[getLastMesure] Erreur SQL rencontrée :', err);
         return reject(err);
       }
- 
-      resolve(results); // tableau vide [] si aucune mesure sur la fenêtre
+
+      // Renvoie les lignes trouvées (ou un tableau vide [] si le rover n'a rien envoyé depuis 60s)
+      resolve(results); 
     });
   });
 };
- 
+
+// Exportation de la fonction pour qu'elle soit exploitable par server.js (Route /api/mesures/latest)
 module.exports = getLastMesure;
- 
