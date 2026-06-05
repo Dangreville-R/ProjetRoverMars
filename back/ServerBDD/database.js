@@ -30,7 +30,7 @@ module.exports = pool;
 
 /** pour utiliser le pool dans d'autres fichiers: *
  *
- *  const pool = require('./db'); // Importe le pool que l'on vient de créer
+ *  const pool = require('./database'); // Importe le pool que l'on vient de créer
 
 async function uneFonction() {
     const [rows] = await pool.query("SELECT * FROM mesures LIMIT 5");
