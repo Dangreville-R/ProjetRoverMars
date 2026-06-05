@@ -2,6 +2,7 @@ import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 
 // Raccourci pour useContext(AuthContext)
+// Conservé pour compatibilité — les composants de classe utilisent static contextType
 export const useAuth = () => {
     const context = useContext(AuthContext);
 
