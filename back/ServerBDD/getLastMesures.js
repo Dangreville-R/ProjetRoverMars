@@ -1,23 +1,23 @@
-// back/ServerBDD/getLastMesures.js
 const pool = require('./database');
 
 /**
- * Récupère toutes les mesures des X dernières secondes pour l'IHM React.
+ * Récupère toutes les mesures des X dernières secondes pour un Rover spécifique.
+ * @param {number} rover_id - L'identifiant du rover (ex: 1)
  * @param {number} secondes - Fenêtre de temps glissante (par défaut 60s)
- * @returns {Promise<Array>} Tableau d'objets mesures [ { temperature, humidite, CO2, date }, ... ]
+ * @returns {Promise<Array>} Tableau d'objets mesures [ { temperature, humidite, CO2, date, rover_id }, ... ]
  */
-async function getLastMesures(secondes = 60) {
-    // Requête SQL triée par date ascendante pour l'affichage chronologique des graphiques du Front-End
+async function getLastMesures(rover_id, secondes = 60) {
+    //  On utilise "rover_id" à la place de "id_rover"
     const sql = `
-        SELECT temperature, humidite, CO2, date 
+        SELECT temperature, humidite, CO2, date, rover_id
         FROM mesures 
-        WHERE date >= NOW() - INTERVAL ? SECOND
+        WHERE rover_id = ? 
+          AND date >= NOW() - INTERVAL ? SECOND
         ORDER BY date ASC
     `;
     
     try {
-        // Exécution de la requête sur le pool de connexion MariaDB (version async/await)
-        const [rows] = await pool.execute(sql, [secondes]);
+        const [rows] = await pool.execute(sql, [rover_id, secondes]);
         return rows; 
     } catch (error) {
         console.error('[getLastMesure] Erreur SQL rencontrée :', error.message);
@@ -25,5 +25,4 @@ async function getLastMesures(secondes = 60) {
     }
 }
 
-// Exportation de la fonction pour qu'elle soit exploitable par server.js (Route /api/mesures/latest)
 module.exports = getLastMesures;
