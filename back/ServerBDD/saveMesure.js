@@ -1,10 +1,14 @@
 // ────────────────────────────────────────────────────────────────
 // Fichier de compatibilité — la logique a été déplacée dans MesureRepository.js
-// Ce fichier maintient l'ancien format d'export : { saveMesure }
 // ────────────────────────────────────────────────────────────────
 const MesureRepository = require('./MesureRepository');
 const database = require('./database');
 
-const repository = new MesureRepository(database);
+// On feinte le repository en lui passant un objet qui possède la méthode getPool()
+const fakeDatabaseInstance = {
+  getPool: () => database
+};
+
+const repository = new MesureRepository(fakeDatabaseInstance);
 
 module.exports = { saveMesure: (data) => repository.saveMesure(data) };

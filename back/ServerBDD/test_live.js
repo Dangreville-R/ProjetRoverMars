@@ -11,7 +11,7 @@ const ROVER_ID = 1;
 const FENETRE  = 60; // secondes
 
 const EXPECTED = {
-  temperature: { min: -10, max: 60 },   // °C
+  temperature: { min: -40, max: 30 },   // °C
   humidite:    { min: 0,   max: 100 },  // %
   CO2:         { min: 300, max: 5000 }, // ppm
 };
@@ -47,7 +47,7 @@ async function runTests() {
 
   let mesures;
   try {
-    mesures = await getLastMesure(ROVER_ID, FENETRE);
+    mesures = await getLastMesure(id_rover, FENETRE);
   } catch (err) {
     console.error(`${FAIL}  Impossible d'interroger la base :`, err.message);
     process.exit(1);
@@ -69,7 +69,7 @@ async function runTests() {
 
   // ── 2. Structure ────────────────────────────────
   console.log('[ Structure ]');
-  const CHAMPS = ['temperature', 'humidite', 'CO2', 'date', 'id_rover'];
+  const CHAMPS = ['temperature', 'humidite', 'CO2', 'date', 'rover_id']; // ✔️ Ici c'est bien rover_id
   mesures.forEach((row, i) => {
     CHAMPS.forEach(champ => {
       assert(champ in row, `Ligne ${i + 1} — champ « ${champ} » présent`);
@@ -79,7 +79,6 @@ async function runTests() {
   // ── 3. Valeurs dans les plages attendues ────────
   console.log('\n[ Valeurs ]');
   mesures.forEach((row, i) => {
-    const d = new Date(row.date).toISOString();
     assert(inRange(row.temperature, EXPECTED.temperature),
       `Ligne ${i + 1} — température [${EXPECTED.temperature.min}, ${EXPECTED.temperature.max}] °C`,
       `valeur : ${row.temperature}`);
@@ -89,9 +88,11 @@ async function runTests() {
     assert(inRange(row.CO2, EXPECTED.CO2),
       `Ligne ${i + 1} — CO₂ [${EXPECTED.CO2.min}, ${EXPECTED.CO2.max}] ppm`,
       `valeur : ${row.CO2}`);
-    assert(Number(row.id_rover) === ROVER_ID,
-      `Ligne ${i + 1} — id_rover = ${ROVER_ID}`,
-      `valeur : ${row.id_rover}`);
+    
+    // ✔️ C'est cette ligne exacte qu'il fallait corriger avec row.rover_id :
+    assert(Number(row.rover_id) === ROVER_ID,
+      `Ligne ${i + 1} — rover_id = ${ROVER_ID}`,
+      `valeur : ${row.rover_id}`);
   });
 
   // ── 4. Fraîcheur ────────────────────────────────

@@ -1,4 +1,9 @@
 // test_insert.js
+
+
+// Tout en haut de test_insert.js
+require('dotenv').config({ path: '../.env' });
+
 const { saveMesure } = require('./saveMesure');
 
 const pool = require('./database');
